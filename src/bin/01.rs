@@ -39,7 +39,7 @@ pub fn part_two(input: &str) -> Option<isize> {
         })
         .collect::<Vec<Vec<isize>>>();
 
-    let mut list_one = lines.iter().map(|x| x[0]).collect::<Vec<isize>>();
+    let list_one = lines.iter().map(|x| x[0]).collect::<Vec<isize>>();
     let list_two_freq = lines
         .iter()
         .map(|x| x[1])
