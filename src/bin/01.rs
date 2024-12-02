@@ -5,7 +5,12 @@ advent_of_code::solution!(1);
 pub fn part_one(input: &str) -> Option<usize> {
     let lines = input
         .lines()
-        .map(|x| x.split_whitespace().take(2).map(|x| x.parse::<isize>().unwrap()).collect::<Vec<isize>>())
+        .map(|x| {
+            x.split_whitespace()
+                .take(2)
+                .map(|x| x.parse::<isize>().unwrap())
+                .collect::<Vec<isize>>()
+        })
         .collect::<Vec<Vec<isize>>>();
 
     let mut list_one = lines.iter().map(|x| x[0]).collect::<Vec<isize>>();
@@ -26,20 +31,22 @@ pub fn part_one(input: &str) -> Option<usize> {
 pub fn part_two(input: &str) -> Option<isize> {
     let lines = input
         .lines()
-        .map(|x| x.split_whitespace().take(2).map(|x| x.parse::<isize>().unwrap()).collect::<Vec<isize>>())
+        .map(|x| {
+            x.split_whitespace()
+                .take(2)
+                .map(|x| x.parse::<isize>().unwrap())
+                .collect::<Vec<isize>>()
+        })
         .collect::<Vec<Vec<isize>>>();
 
     let mut list_one = lines.iter().map(|x| x[0]).collect::<Vec<isize>>();
     let list_two_freq = lines
         .iter()
         .map(|x| x[1])
-        .fold(
-            HashMap::new(),
-            |mut acc, el| {
-                *acc.entry(el).or_insert(0) += 1;
-                acc
-            }
-        );
+        .fold(HashMap::new(), |mut acc, el| {
+            *acc.entry(el).or_insert(0) += 1;
+            acc
+        });
 
     let similarity = list_one
         .iter()
