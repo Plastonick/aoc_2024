@@ -1,4 +1,4 @@
-<img alt="rust christmas mascot" src="./.assets/christmas_ferris.png" width="1200">
+<img alt="rust christmas mascot" src="./.assets/christmas_ferris.png" style="width:164px">
 
 # 🎄 Advent of Code 2024
 
