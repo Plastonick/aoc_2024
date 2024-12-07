@@ -1,6 +1,6 @@
-<img alt="rust christmas mascot" src="./.assets/christmas_ferris.png" width="164">
+<img alt="rust christmas mascot" src="./.assets/christmas_ferris.png" width="1200">
 
-# 🎄 Advent of Code {year}
+# 🎄 Advent of Code 2024
 
 Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.rust-lang.org/).
 
@@ -90,7 +90,7 @@ In VS Code, `rust-analyzer` will display buttons for running / debugging these u
 `let result = part_two(&advent_of_code::template::read_file_part("examples", DAY, 2));`. This supports an arbitrary
 > number of example files.
 
-### ➡️ Download input for a day
+### Download input for a day
 
 > [!IMPORTANT]
 > This requires [installing the aoc-cli crate](#configure-aoc-cli-integration).
@@ -267,7 +267,7 @@ cargo clippy
    session cookie, press F12 anywhere on the Advent of Code website to open your browser developer tools. Look in
    _Cookies_ under the _Application_ or _Storage_ tab, and copy out the `session` cookie value. [^1]
 
-Once installed, you can use the [download command](#download-input--description-for-a-day), the read command, and
+Once installed, you can use the [download command](#download-input-for-a-day), the read command, and
 automatically submit solutions via the [`--submit` flag](#submitting-solutions).
 
 ### Automatically track ⭐️ progress in the readme
