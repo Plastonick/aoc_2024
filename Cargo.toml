@@ -30,3 +30,5 @@ tinyjson = "2.5.1"
 # Solution dependencies
 regex = "1.11.1"
 euclid = "0.22.11"
+itertools = "0.13.0"
+num = "0.4.3"
