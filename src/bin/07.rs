@@ -39,7 +39,7 @@ enum Operation {
 
 fn is_valid(test: &usize, numbers: &Vec<usize>, operations: &Vec<Operation>) -> bool {
     if numbers.len() == 1 {
-        return numbers.get(0) == Some(test);
+        return numbers[0] == *test;
     }
 
     for operation in operations {
