@@ -67,17 +67,19 @@ fn ray_points(anchor: &Point, step: &Vector, bounds: &Point) -> Vec<Point> {
         panic!("Didn't expect a 0-vector!")
     }
 
+    assert_eq!(bounds.x, bounds.y);
+
     // find a point on the ray outside the bounds
     let num_points = if step.x > step.y {
-        anchor.x / step.x
+        bounds.x / step.x
     } else {
-        anchor.y / step.y
+        bounds.y / step.y
     };
 
     // TODO a little excessive, we check way more points than we need to...
-    let start_point = anchor.add(step.mul(-num_points * 100));
+    let start_point = anchor.add(step.mul(-num_points));
 
-    (0..=num_points * 200)
+    (0..=num_points * 2)
         .into_iter()
         .map(|i| start_point.add(step.mul(i)))
         .filter(|x| within_bounds(&x, &bounds))
