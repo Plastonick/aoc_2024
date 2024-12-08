@@ -46,9 +46,7 @@ fn is_valid(test: usize, numbers: &Vec<usize>, operations: &Vec<Operation>) -> b
         let new_first = match operation {
             Operation::Add => numbers[0] + numbers[1],
             Operation::Mul => numbers[0] * numbers[1],
-            Operation::Concat => format!("{}{}", numbers[0], numbers[1])
-                .parse::<usize>()
-                .unwrap(),
+            Operation::Concat => concat(numbers[0], numbers[1]),
         };
         let mut new_numbers = vec![new_first];
         for number in numbers.iter().skip(2) {
@@ -61,6 +59,10 @@ fn is_valid(test: usize, numbers: &Vec<usize>, operations: &Vec<Operation>) -> b
     }
 
     false
+}
+
+fn concat(a: usize, b: usize) -> usize {
+    a * 10_i32.pow(b.ilog10() + 1) as usize + b
 }
 
 fn parse(input: &str) -> Vec<(usize, Vec<usize>)> {
