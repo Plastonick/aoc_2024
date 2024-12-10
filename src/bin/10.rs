@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use itertools::Itertools;
 
 advent_of_code::solution!(10);
 
@@ -12,7 +12,7 @@ pub fn part_one(input: &str) -> Option<u32> {
             row.iter()
                 .enumerate()
                 .filter(|(_, height)| **height == 0)
-                .map(|(c, _)| trail_head_score((r, c), &height_map))
+                .map(|(c, _)| trail_head_score((r, c), &height_map, true))
                 .sum::<u32>()
         })
         .sum::<u32>();
@@ -30,7 +30,7 @@ pub fn part_two(input: &str) -> Option<u32> {
             row.iter()
                 .enumerate()
                 .filter(|(_, height)| **height == 0)
-                .map(|(c, _)| trail_head_rating((r, c), &height_map))
+                .map(|(c, _)| trail_head_score((r, c), &height_map, false))
                 .sum::<u32>()
         })
         .sum::<u32>();
@@ -38,26 +38,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     Some(trail_head_total)
 }
 
-fn trail_head_score(pos: (usize, usize), height_map: &Vec<Vec<u8>>) -> u32 {
-    let mut paths = HashSet::new();
-    paths.insert(pos);
-
-    let mut value = 0;
-    while paths.len() > 0 && value != 9 {
-        paths = paths
-            .into_iter()
-            .map(|node| get_successors(node, &height_map))
-            .filter(|p| p.len() > 0)
-            .flatten()
-            .collect();
-
-        value += 1;
-    }
-
-    paths.len() as u32
-}
-
-fn trail_head_rating(pos: (usize, usize), height_map: &Vec<Vec<u8>>) -> u32 {
+fn trail_head_score(pos: (usize, usize), height_map: &Vec<Vec<u8>>, unique: bool) -> u32 {
     let mut paths = vec![pos];
 
     let mut value = 0;
@@ -68,6 +49,10 @@ fn trail_head_rating(pos: (usize, usize), height_map: &Vec<Vec<u8>>) -> u32 {
             .filter(|p| p.len() > 0)
             .flatten()
             .collect();
+
+        if unique {
+            paths = paths.into_iter().unique().collect()
+        }
 
         value += 1;
     }
