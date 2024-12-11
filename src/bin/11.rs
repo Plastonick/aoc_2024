@@ -1,47 +1,51 @@
+use cached::proc_macro::cached;
+
 advent_of_code::solution!(11);
 
 pub fn part_one(input: &str) -> Option<usize> {
     let numbers = parse(input);
 
-    Some(blink_n(&numbers, 25).len())
+    let num_stones = numbers
+        .into_iter()
+        .map(|number| stones_after_blinks(number, 25))
+        .sum::<usize>();
+
+    Some(num_stones)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
     let numbers = parse(input);
+    let num_stones = numbers
+        .into_iter()
+        .map(|number| stones_after_blinks(number, 75))
+        .sum::<usize>();
 
-    Some(blink_n(&numbers, 75).len())
+    Some(num_stones)
 }
 
-fn blink_n(initial: &Vec<usize>, times: usize) -> Vec<usize> {
-    // todo each stone is operated on independently so we can basically ask the question:
-    // "how many stones will stone A turn into after 'x' blinks
-    // and each time we find that stone we know the answer
-
-    let mut numbers = initial.clone();
-    for _ in 0..times {
-        numbers = numbers
-            .iter()
-            .map(|num| {
-                if num == &0 {
-                    vec![1]
-                } else if num.ilog10() % 2 == 1 {
-                    // even number of digits
-                    let divisor = 10_i32.pow(1 + num.ilog10() / 2) as usize;
-
-                    // split digits up
-                    let left = num / divisor;
-                    let right = num - (left * divisor);
-
-                    vec![left, right]
-                } else {
-                    vec![*num * 2024]
-                }
-            })
-            .flatten()
-            .collect::<Vec<usize>>();
+#[cached]
+fn stones_after_blinks(value: usize, blinks: usize) -> usize {
+    if blinks == 0 {
+        return 1;
     }
 
-    numbers
+    if value == 0 {
+        stones_after_blinks(1, blinks - 1)
+    } else if value.ilog10() % 2 == 1 {
+        // even number of digits
+        let divisor = 10_i32.pow(1 + value.ilog10() / 2) as usize;
+
+        // split digits up
+        let left = value / divisor;
+        let right = value - (left * divisor);
+
+        let left_count = stones_after_blinks(left, blinks - 1);
+        let right_count = stones_after_blinks(right, blinks - 1);
+
+        left_count + right_count
+    } else {
+        stones_after_blinks(value * 2024, blinks - 1)
+    }
 }
 
 fn parse(input: &str) -> Vec<usize> {
@@ -67,6 +71,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(65601038650482));
     }
 }
