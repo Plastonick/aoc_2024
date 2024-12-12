@@ -65,25 +65,28 @@ fn get_sides(region: &HashSet<(i32, i32)>) -> i32 {
         .unwrap();
 
     let mut horz_sides = 0;
-    // find horizontal sides
     for r in min_bounds.0 - 1..=max_bounds.0 {
-        let mut previous_col_tiles = (false, false);
+        let mut previous_up_exists = false;
+        let mut previous_down_exists = false;
 
         for c in min_bounds.1..=max_bounds.1 {
             // is there a border here?
             let up_exists = region.contains(&(r, c));
             let down_exists = region.contains(&(r + 1, c));
             let edge_exists = up_exists != down_exists;
-            let new_edge = previous_col_tiles.0 != up_exists || previous_col_tiles.1 != down_exists;
+            let new_edge = previous_up_exists != up_exists || previous_down_exists != down_exists;
 
             if new_edge && edge_exists {
-                // we've just entered an edge! Add it!
+                // we've just entered a new edge! Add it!
                 horz_sides += 1;
             }
 
-            previous_col_tiles = (up_exists, down_exists);
+            previous_up_exists = up_exists;
+            previous_down_exists = down_exists;
         }
     }
+
+    // number of horizontal sides == number of vertical sides, so double this figure!
     horz_sides * 2
 }
 
