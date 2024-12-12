@@ -93,12 +93,11 @@ fn get_sides(region: &HashSet<(i32, i32)>) -> i32 {
 fn get_region(initial: &(i32, i32), garden: &Garden) -> (HashSet<(i32, i32)>, i32) {
     let mut region = HashSet::new();
     region.insert(*initial);
-    let mut wave = HashSet::new();
-    wave.insert(*initial);
+    let mut wave = vec![*initial];
 
     let mut perimeter = 0;
     while wave.len() > 0 {
-        let mut new_wave = HashSet::new();
+        let mut new_wave = vec![];
 
         for plot in wave {
             let neighbours = get_matching_neighbours(&plot, &garden);
@@ -113,7 +112,7 @@ fn get_region(initial: &(i32, i32), garden: &Garden) -> (HashSet<(i32, i32)>, i3
                 }
 
                 // we've not seen this plot yet, add it to the next wave and region
-                new_wave.insert(neighbour);
+                new_wave.push(neighbour);
                 region.insert(neighbour);
             }
         }
