@@ -84,31 +84,7 @@ fn get_sides(region: &HashSet<(i32, i32)>) -> i32 {
             previous_col_tiles = (up_exists, down_exists);
         }
     }
-
-    let mut vert_sides = 0;
-    // find vertical sides
-    for c in min_bounds.1..=max_bounds.1 + 1 {
-        let mut previous_row_tiles = (false, false);
-
-        for r in min_bounds.0..=max_bounds.0 {
-            // is there a border here?
-            let left_exists = region.contains(&(r, c - 1));
-            let right_exists = region.contains(&(r, c));
-            let edge_exists = left_exists != right_exists;
-
-            let new_edge =
-                previous_row_tiles.0 != left_exists || previous_row_tiles.1 != right_exists;
-
-            if new_edge && edge_exists {
-                // we've just entered an edge! Add it!
-                vert_sides += 1;
-            }
-
-            previous_row_tiles = (left_exists, right_exists);
-        }
-    }
-
-    horz_sides + vert_sides
+    horz_sides * 2
 }
 
 fn get_region(initial: &(i32, i32), garden: &Garden) -> (HashSet<(i32, i32)>, i32) {
