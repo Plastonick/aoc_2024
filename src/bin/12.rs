@@ -6,26 +6,109 @@ type Garden = HashMap<(i32, i32), char>;
 
 pub fn part_one(input: &str) -> Option<i32> {
     let garden = parse(input);
+    let garden_score = get_regions(&garden)
+        .iter()
+        .map(|(region, perimeter, _)| region.len() as i32 * perimeter)
+        .sum();
+
+    Some(garden_score)
+}
+
+pub fn part_two(input: &str) -> Option<i32> {
+    let garden = parse(input);
+    let garden_score = get_regions(&garden)
+        .iter()
+        .map(|(region, _, _)| {
+            let num_sides = get_sides(&region);
+
+            region.len() as i32 * num_sides
+        })
+        .sum();
+
+    Some(garden_score)
+}
+
+fn get_regions(garden: &Garden) -> Vec<(HashSet<(i32, i32)>, i32, char)> {
     let mut visited = HashSet::new();
-    let mut garden_score = 0;
+    let mut regions = vec![];
+
     for plot in garden.keys() {
         if visited.contains(plot) {
             continue;
         }
 
+        let ch = *garden
+            .get(&plot)
+            .expect(&format!("No plot at position ({}, {})!", plot.0, plot.1));
         let (region, perimeter) = get_region(plot, &garden);
-        garden_score += region.len() as i32 * perimeter;
+        regions.push((region.clone(), perimeter, ch));
 
         for plot in region {
             visited.insert(plot);
         }
     }
 
-    Some(garden_score)
+    regions
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+fn get_sides(region: &HashSet<(i32, i32)>) -> i32 {
+    let max_bounds = region
+        .clone()
+        .into_iter()
+        .reduce(|a, b| (a.0.max(b.0), a.1.max(b.1)))
+        .unwrap();
+
+    let min_bounds = region
+        .clone()
+        .into_iter()
+        .reduce(|a, b| (a.0.min(b.0), a.1.min(b.1)))
+        .unwrap();
+
+    let mut horz_sides = 0;
+    // find horizontal sides
+    for r in min_bounds.0 - 1..=max_bounds.0 {
+        let mut previous_col_tiles = (false, false);
+
+        for c in min_bounds.1..=max_bounds.1 {
+            // is there a border here?
+            let up_exists = region.contains(&(r, c));
+            let down_exists = region.contains(&(r + 1, c));
+            let edge_exists = up_exists != down_exists;
+            let new_edge = previous_col_tiles.0 != up_exists || previous_col_tiles.1 != down_exists;
+
+            if new_edge && edge_exists {
+                // we've just entered an edge! Add it!
+                horz_sides += 1;
+            }
+
+            previous_col_tiles = (up_exists, down_exists);
+        }
+    }
+
+    let mut vert_sides = 0;
+    // find vertical sides
+    for c in min_bounds.1..=max_bounds.1 + 1 {
+        let mut previous_row_tiles = (false, false);
+
+        for r in min_bounds.0..=max_bounds.0 {
+            // is there a border here?
+            let left_exists = region.contains(&(r, c - 1));
+            let right_exists = region.contains(&(r, c));
+            let edge_exists = left_exists != right_exists;
+
+            let new_edge =
+                previous_row_tiles.0 != left_exists || previous_row_tiles.1 != right_exists;
+
+            if new_edge && edge_exists {
+                // we've just entered an edge! Add it!
+                vert_sides += 1;
+            }
+
+            previous_row_tiles = (left_exists, right_exists);
+        }
+    }
+
+    horz_sides + vert_sides
 }
 
 fn get_region(initial: &(i32, i32), garden: &Garden) -> (HashSet<(i32, i32)>, i32) {
