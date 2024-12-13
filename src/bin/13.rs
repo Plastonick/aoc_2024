@@ -6,22 +6,22 @@ advent_of_code::solution!(13);
 
 #[derive(Debug)]
 struct Game {
-    a_delta: Point2D<isize, isize>,
-    b_delta: Point2D<isize, isize>,
-    target: Point2D<isize, isize>,
+    a_delta: Point2D<i64, i64>,
+    b_delta: Point2D<i64, i64>,
+    target: Point2D<i64, i64>,
 }
 
-const COSTS: (isize, isize) = (3, 1);
+const COSTS: (i64, i64) = (3, 1);
 
-pub fn part_one(input: &str) -> Option<isize> {
+pub fn part_one(input: &str) -> Option<i64> {
     let games = parse(input);
-    let total_cost = games.iter().filter_map(min_cost).sum::<isize>();
+    let total_cost = games.iter().filter_map(min_cost).sum::<i64>();
 
     Some(total_cost)
 }
 
-pub fn part_two(input: &str) -> Option<isize> {
-    const CONVERSION_DELTA: isize = 10000000000000;
+pub fn part_two(input: &str) -> Option<i64> {
+    const CONVERSION_DELTA: i64 = 10000000000000;
 
     let games = parse(input);
     let total_cost = games
@@ -31,12 +31,12 @@ pub fn part_two(input: &str) -> Option<isize> {
             ..g
         })
         .filter_map(|g| min_cost(&g))
-        .sum::<isize>();
+        .sum::<i64>();
 
     Some(total_cost)
 }
 
-fn min_cost(game: &Game) -> Option<isize> {
+fn min_cost(game: &Game) -> Option<i64> {
     // TODO, I'm not sure this is necessarily valid for cases where a_delta and b_delta are not co-prime vectors
     // luckily, that appears to not be the case here...
     let b_pushes = (game.a_delta.y * game.target.x - game.a_delta.x * game.target.y)
@@ -61,14 +61,14 @@ fn parse(input: &str) -> Vec<Game> {
             let numbers = re
                 .find_iter(game)
                 .filter_map(|m| {
-                    let parsed = m.as_str().parse::<isize>();
+                    let parsed = m.as_str().parse::<i64>();
 
                     match parsed {
                         Ok(num) => Some(num),
                         _ => None,
                     }
                 })
-                .collect::<Vec<isize>>();
+                .collect::<Vec<i64>>();
 
             assert_eq!(numbers.len(), 6);
 
