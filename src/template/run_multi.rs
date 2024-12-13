@@ -19,18 +19,16 @@ pub fn run_multi(days_to_run: &HashSet<Day>, is_release: bool, is_timed: bool) -
             if need_space {
                 println!();
             }
-            need_space = true;
-
-            println!("{ANSI_BOLD}Day {day}{ANSI_RESET}");
-            println!("------");
 
             let output = child_commands::run_solution(day, is_timed, is_release).unwrap();
 
-            if output.is_empty() {
-                println!("Not solved.");
+            need_space = if output.is_empty() {
+                false
             } else {
                 let val = child_commands::parse_exec_time(&output, day);
                 timings.push(val);
+
+                true
             }
         });
 
@@ -68,7 +66,7 @@ pub fn get_path_for_bin(day: Day) -> String {
 /// This module encapsulates interaction with these binaries, both invoking them as well as parsing the timing output.
 pub mod child_commands {
     use super::{get_path_for_bin, Error};
-    use crate::template::Day;
+    use crate::template::{Day, ANSI_BOLD, ANSI_RESET};
     use std::{
         io::{BufRead, BufReader},
         path::Path,
@@ -109,6 +107,9 @@ pub mod child_commands {
         let stderr = BufReader::new(cmd.stderr.take().ok_or(super::Error::BrokenPipe)?);
 
         let mut output = vec![];
+
+        println!("{ANSI_BOLD}Day {day}{ANSI_RESET}");
+        println!("------");
 
         let thread = thread::spawn(move || {
             stderr.lines().for_each(|line| {
