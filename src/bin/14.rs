@@ -87,7 +87,7 @@ pub fn part_two(input: &str) -> Option<u32> {
         // println!();
         // println!();
 
-        // print(&new_robots, &bounds);
+        // _print(&new_robots, &bounds);
     }
 
     None
@@ -162,7 +162,7 @@ fn numbers_to_vector(input: &str) -> Vector2D<isize> {
     vec2(left.parse().unwrap(), right.parse().unwrap())
 }
 
-fn print(robots: &Vec<Robot>, bounds: &Point2D<isize>) {
+fn _print(robots: &Vec<Robot>, bounds: &Point2D<isize>) {
     let positions = robots.iter().fold(HashMap::new(), |mut acc, robot| {
         let key = (robot.position.x, robot.position.y);
 
