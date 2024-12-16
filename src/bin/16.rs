@@ -4,7 +4,7 @@ use euclid::{point2, vec2, Point2D, Vector2D};
 use itertools::Itertools;
 use priority_queue::PriorityQueue;
 use std::cmp::Reverse;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 advent_of_code::solution!(16);
 
@@ -51,39 +51,85 @@ pub fn part_two(input: &str) -> Option<usize> {
 
 fn find_all_optimal_paths(
     from: Particle,
-    to: Point,
+    end: Point,
     map: &HashSet<Point>,
-) -> Option<(Vec<Vec<Particle>>, usize)> {
+) -> Option<(Vec<Vec<Point>>, usize)> {
+    let mut best_cost_to_position: HashMap<Point, (usize, Vec<Point>)> = HashMap::new();
     let mut queue = PriorityQueue::new();
-    queue.push((from.clone(), vec![from]), Reverse(0));
+    queue.push(from.clone(), Reverse(0));
 
     let mut optimal_cost = None;
-    let mut best_paths = vec![];
 
-    while let Some(((particle, path), Reverse(particle_cost))) = queue.pop() {
-        if optimal_cost.is_some() && optimal_cost < Some(particle_cost) {
+    while let Some((particle, Reverse(particle_cost))) = queue.pop() {
+        if optimal_cost.unwrap_or(usize::MAX) < particle_cost {
             // we've found all the optimal paths, discontinue!
             break;
         }
 
-        if particle.position == to {
+        if particle.position == end {
             optimal_cost = Some(particle_cost);
-            best_paths.push(path.clone());
         }
 
         for (neighbour, move_cost) in get_neighbours(&particle, &map) {
             let neighbour_cost = particle_cost + move_cost;
-            let mut new_path = path.clone();
-            new_path.push(neighbour.clone());
 
-            queue.push((neighbour, new_path), Reverse(neighbour_cost));
+            let (best_cost, prev_points) = best_cost_to_position
+                .entry(neighbour.position)
+                .or_insert((usize::MAX, vec![]));
+
+            if neighbour_cost > *best_cost {
+                // this is more expensive than what we've seen previously, ignore it
+                continue;
+            }
+
+            if neighbour_cost < *best_cost {
+                // this is a cheaper way of getting here, reset the entry
+                best_cost_to_position.insert(
+                    neighbour.position,
+                    (neighbour_cost, vec![particle.position]),
+                );
+            } else if neighbour_cost == *best_cost {
+                println!("Adding duplicate prior");
+
+                // this is an equivalently expensive way of getting here, include it!
+                prev_points.push(particle.position)
+            }
+            queue.push(neighbour, Reverse(neighbour_cost));
         }
     }
 
     if let Some(cost) = optimal_cost {
-        Some((best_paths, cost))
+        let paths = follow_paths_back(vec![end], &best_cost_to_position);
+
+        Some((paths, cost))
     } else {
         None
+    }
+}
+
+fn follow_paths_back(
+    path: Vec<Point>,
+    backs: &HashMap<Point, (usize, Vec<Point>)>,
+) -> Vec<Vec<Point>> {
+    let &last = path.last().unwrap();
+
+    if let Some((_, prior)) = backs.get(&last) {
+        if prior.len() == 2 {
+            println!("found a fork point: ({}, {})", last.x, last.y)
+        }
+
+        prior
+            .iter()
+            .map(|p| {
+                let mut new_path = path.clone();
+                new_path.push(*p);
+
+                follow_paths_back(new_path, &backs)
+            })
+            .flatten()
+            .collect()
+    } else {
+        vec![path]
     }
 }
 
