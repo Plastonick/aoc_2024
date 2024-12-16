@@ -1,97 +1,122 @@
+extern crate core;
+
 use euclid::{point2, vec2, Point2D, Vector2D};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::ops::Add;
+use itertools::Itertools;
+use priority_queue::PriorityQueue;
+use std::cmp::Reverse;
+use std::collections::HashSet;
 
 advent_of_code::solution!(16);
 
 type Point = Point2D<isize, isize>;
 type Vector = Vector2D<isize, isize>;
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
 struct Particle {
-    cost: isize,
     position: Point,
     direction: Vector,
 }
 
-impl Particle {
-    fn state(&self) -> (Point, Vector) {
-        (self.position, self.direction)
-    }
-}
-
-pub fn part_one(input: &str) -> Option<isize> {
+pub fn part_one(input: &str) -> Option<usize> {
     let (start, end, map) = parse(input);
 
-    find_best_path(
+    let (_, cost) = find_all_optimal_paths(
         Particle {
-            cost: 0,
             position: start,
             direction: vec2(0, 1),
         },
         end,
         &map,
     )
+    .unwrap();
+
+    Some(cost)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let (start, end, map) = parse(input);
+
+    let (paths, _) = find_all_optimal_paths(
+        Particle {
+            position: start,
+            direction: vec2(0, 1),
+        },
+        end,
+        &map,
+    )
+    .unwrap();
+
+    Some(paths.iter().flatten().unique().count())
 }
 
-fn find_best_path(from: Particle, to: Point, map: &HashSet<Point>) -> Option<isize> {
-    let mut cheapest_states: HashMap<(Point, Vector), isize> = HashMap::new();
-    let mut wave = BTreeMap::new();
-    wave.entry(from.cost).or_insert(HashSet::new()).insert(from);
+fn find_all_optimal_paths(
+    from: Particle,
+    to: Point,
+    map: &HashSet<Point>,
+) -> Option<(Vec<Vec<Particle>>, usize)> {
+    let mut queue = PriorityQueue::new();
+    queue.push((from.clone(), vec![from]), Reverse(0));
 
-    while !wave.is_empty() {
-        let (value, particles) = wave.pop_first().unwrap();
+    let mut optimal_cost = None;
+    let mut best_paths = vec![];
 
-        for particle in particles {
-            if particle.position == to {
-                return Some(value);
-            }
+    while let Some(((particle, path), Reverse(particle_cost))) = queue.pop() {
+        if optimal_cost.is_some() && optimal_cost < Some(particle_cost) {
+            // we've found all the optimal paths, discontinue!
+            break;
+        }
 
-            for neighbour in get_neighbours(particle, &map) {
-                if let Some(&cost) = cheapest_states.get(&neighbour.state()) {
-                    if cost < neighbour.cost {
-                        // we've already been here cheaper, don't add the neighbour
-                        continue;
-                    } else {
-                        cheapest_states.insert(neighbour.state(), neighbour.cost);
-                    }
-                }
+        if particle.position == to {
+            optimal_cost = Some(particle_cost);
+            best_paths.push(path.clone());
+        }
 
-                wave.entry(neighbour.cost)
-                    .or_insert(HashSet::new())
-                    .insert(neighbour);
-            }
+        for (neighbour, move_cost) in get_neighbours(&particle, &map) {
+            let neighbour_cost = particle_cost + move_cost;
+            let mut new_path = path.clone();
+            new_path.push(neighbour.clone());
+
+            queue.push((neighbour, new_path), Reverse(neighbour_cost));
         }
     }
 
-    None
+    if let Some(cost) = optimal_cost {
+        Some((best_paths, cost))
+    } else {
+        None
+    }
 }
 
-fn get_neighbours(particle: Particle, map: &HashSet<Point>) -> Vec<Particle> {
-    // move forward or turn 90º either CW or CCW
+fn get_neighbours(particle: &Particle, map: &HashSet<Point>) -> Vec<(Particle, usize)> {
+    // move forward or turn 90º either direction
+    let d1 = vec2(particle.direction.y, -particle.direction.x);
+    let d2 = vec2(-particle.direction.y, particle.direction.x);
+
     [
-        Particle {
-            cost: particle.cost + 1,
-            position: particle.position.add(particle.direction),
-            ..particle
-        },
-        Particle {
-            cost: particle.cost + 1000,
-            direction: vec2(particle.direction.y, -particle.direction.x),
-            ..particle
-        },
-        Particle {
-            cost: particle.cost + 1000,
-            direction: vec2(-particle.direction.y, particle.direction.x),
-            ..particle
-        },
+        (
+            Particle {
+                position: particle.position + particle.direction,
+                direction: particle.direction,
+            },
+            1,
+        ),
+        (
+            Particle {
+                position: particle.position + d1,
+                direction: d1,
+            },
+            1001,
+        ),
+        (
+            Particle {
+                position: particle.position + d2,
+                direction: d2,
+            },
+            1001,
+        ),
     ]
     .into_iter()
-    .filter(|p| map.contains(&p.position))
+    .filter(|(p, _)| map.contains(&p.position))
     .collect()
 }
 
@@ -139,8 +164,24 @@ mod tests {
     }
 
     #[test]
+    fn test_part_one_alt() {
+        let result = part_one(&advent_of_code::template::read_file_part(
+            "examples", DAY, 2,
+        ));
+        assert_eq!(result, Some(11048));
+    }
+
+    #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(45));
+    }
+
+    #[test]
+    fn test_part_two_alt() {
+        let result = part_two(&advent_of_code::template::read_file_part(
+            "examples", DAY, 2,
+        ));
+        assert_eq!(result, Some(64));
     }
 }
