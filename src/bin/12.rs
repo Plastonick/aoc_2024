@@ -96,7 +96,7 @@ fn get_region(initial: &(i32, i32), garden: &Garden) -> (HashSet<(i32, i32)>, i3
     let mut wave = vec![*initial];
 
     let mut perimeter = 0;
-    while wave.len() > 0 {
+    while !wave.is_empty() {
         let mut new_wave = vec![];
 
         for plot in wave {
