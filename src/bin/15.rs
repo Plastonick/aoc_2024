@@ -8,62 +8,97 @@ type Point = Point2D<isize, isize>;
 type Vector = Vector2D<isize, isize>;
 
 pub fn part_one(input: &str) -> Option<isize> {
-    let (mut robot, walls, mut boxes, directions) = parse(input);
+    let (robot, walls, boxes, directions) = parse(input);
+    let score = calculate_safety_score(robot, &walls, boxes, &directions);
+
+    Some(score)
+}
+
+pub fn part_two(input: &str) -> Option<isize> {
+    let expanded_input = input
+        .replace(".", "..")
+        .replace("@", "@.")
+        .replace("#", "##")
+        .replace("O", "[]");
+
+    let (robot, walls, boxes, directions) = parse(&expanded_input);
+    let score = calculate_safety_score(robot, &walls, boxes, &directions);
+
+    Some(score)
+}
+
+fn calculate_safety_score(
+    robot: Point,
+    walls: &HashSet<Point>,
+    boxes: HashMap<Point, Point>,
+    directions: &Vec<Vector>,
+) -> isize {
+    let mut robot = robot;
+    let mut boxes = boxes;
 
     for direction in directions {
         (robot, boxes) = move_robot(robot, direction, boxes, &walls);
     }
 
-    let score = boxes.iter().map(|(b, _)| b.x * 100 + b.y).sum::<isize>();
-
-    Some(score)
-}
-
-pub fn part_two(input: &str) -> Option<u32> {
-    let expanded_input = input
-        .replace(".", "..")
-        .replace("#", "##")
-        .replace("O", "[]");
-
-    let (mut robot, walls, mut boxes, directions) = parse(&expanded_input);
-
-    None
+    boxes.iter().map(|(b, _)| b.x * 100 + b.y).sum()
 }
 
 fn move_robot(
     robot: Point,
-    direction: Vector,
+    direction: &Vector,
     boxes: HashMap<Point, Point>,
     walls: &HashSet<Point>,
 ) -> (Point, HashMap<Point, Point>) {
-    // list everything in order between the robot and the nearest wall or empty, in direction
-    let mut boxes_to_move = vec![];
-    let mut pos = robot.clone();
+    let Some(boxes_to_move) = moveable_system(robot, direction, &boxes, &walls) else {
+        return (robot, boxes);
+    };
 
-    loop {
-        pos = pos.add(direction);
+    let mut new_boxes = boxes.clone();
+    for (box_to_move, connected_box) in boxes_to_move {
+        new_boxes.remove(&box_to_move);
+        new_boxes.insert(box_to_move.add(*direction), connected_box.add(*direction));
+    }
 
-        if boxes.contains_key(&pos) {
-            boxes_to_move.push(pos);
-        } else if walls.contains(&pos) {
-            // there's a wall, can't move, return the existing state
-            return (robot, boxes);
-        } else {
-            // found an "empty" space, that's the end of our ray, return!
-            break;
+    (robot.add(*direction), new_boxes)
+}
+
+fn moveable_system(
+    pushing_from: Point,
+    direction: &Vector,
+    boxes: &HashMap<Point, Point>,
+    walls: &HashSet<Point>,
+) -> Option<HashMap<Point, Point>> {
+    let mut system = HashMap::new();
+    let mut wave = vec![pushing_from.add(*direction)];
+
+    // TODO non-deterministic... there's an issue here somewhere!
+    while !wave.is_empty() {
+        let mut new_wave = vec![];
+        for point in wave {
+            // we've already included this point in our system! Carry on...
+            if system.contains_key(&point) {
+                continue;
+            }
+
+            // we're trying to push a wall, the push will fail, return None
+            if walls.contains(&point) {
+                return None;
+            }
+
+            // we're trying to push a box! Great!
+            // Add that point to our system, and add anything it's also pushing for consideration
+            if let Some(&connected_box) = boxes.get(&point) {
+                system.insert(point, connected_box);
+
+                new_wave.push(connected_box); // the box piece our box is connected to
+                new_wave.push(point.add(*direction)); // the space with which this box is trying to move into
+            }
         }
+
+        wave = new_wave;
     }
 
-    if boxes_to_move.len() == 0 {
-        (robot.add(direction), boxes)
-    } else {
-        let mut new_boxes = boxes.clone();
-        new_boxes.remove(&boxes_to_move[0]);
-        let d = boxes_to_move.last().unwrap().add(direction);
-        new_boxes.insert(d, d);
-
-        (robot.add(direction), new_boxes)
-    }
+    Some(system)
 }
 
 fn parse(input: &str) -> (Point, HashSet<Point>, HashMap<Point, Point>, Vec<Vector>) {
@@ -128,6 +163,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(9021));
     }
 }
