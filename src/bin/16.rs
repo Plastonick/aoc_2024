@@ -11,7 +11,7 @@ advent_of_code::solution!(16);
 type Point = Point2D<isize, isize>;
 type Vector = Vector2D<isize, isize>;
 
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy)]
 struct State {
     position: Point,
     direction: Vector,
@@ -54,11 +54,12 @@ fn find_all_optimal_paths(
     end: Point,
     map: &HashSet<Point>,
 ) -> Option<(Vec<Vec<Point>>, usize)> {
-    let mut best_cost_to_position: HashMap<Point, (usize, Vec<Point>)> = HashMap::new();
+    let mut best_cost_to_state: HashMap<State, (usize, Vec<State>)> = HashMap::new();
     let mut queue = PriorityQueue::new();
     queue.push(from.clone(), Reverse(0));
 
     let mut optimal_cost = None;
+    let mut end_states = vec![];
 
     while let Some((particle, Reverse(particle_cost))) = queue.pop() {
         if optimal_cost.unwrap_or(usize::MAX) < particle_cost {
@@ -67,14 +68,20 @@ fn find_all_optimal_paths(
         }
 
         if particle.position == end {
+            end_states.push(particle);
             optimal_cost = Some(particle_cost);
         }
 
-        for (neighbour, move_cost) in get_neighbours(&particle, &map) {
+        let neighbours = get_neighbours(&particle, &map);
+        if neighbours.len() == 100000000 {
+            panic!();
+        }
+
+        for (neighbour, move_cost) in neighbours {
             let neighbour_cost = particle_cost + move_cost;
 
-            let (best_cost, prev_points) = best_cost_to_position
-                .entry(neighbour.position)
+            let (best_cost, prev_points) = best_cost_to_state
+                .entry(neighbour.clone())
                 .or_insert((usize::MAX, vec![]));
 
             if neighbour_cost > *best_cost {
@@ -84,43 +91,47 @@ fn find_all_optimal_paths(
 
             if neighbour_cost < *best_cost {
                 // this is a cheaper way of getting here, reset the entry
-                best_cost_to_position.insert(
-                    neighbour.position,
-                    (neighbour_cost, vec![particle.position]),
-                );
+                best_cost_to_state.insert(neighbour.clone(), (neighbour_cost, vec![particle]));
             } else if neighbour_cost == *best_cost {
                 // println!("Adding duplicate prior");
 
                 // this is an equivalently expensive way of getting here, include it!
-                prev_points.push(particle.position)
+                prev_points.push(particle)
             }
+
             queue.push(neighbour, Reverse(neighbour_cost));
         }
     }
 
     if let Some(cost) = optimal_cost {
-        let paths = follow_paths_back(vec![end], &best_cost_to_position);
+        let paths = follow_paths_back(end_states, &best_cost_to_state);
 
-        Some((paths, cost))
+        Some((
+            paths
+                .iter()
+                .map(|path| path.iter().map(|state| state.position).collect())
+                .collect(),
+            cost,
+        ))
     } else {
         None
     }
 }
 
 fn follow_paths_back(
-    path: Vec<Point>,
-    best_paths_to_position: &HashMap<Point, (usize, Vec<Point>)>,
-) -> Vec<Vec<Point>> {
+    path: Vec<State>,
+    best_paths_to_states: &HashMap<State, (usize, Vec<State>)>,
+) -> Vec<Vec<State>> {
     let &last = path.last().unwrap();
 
-    if let Some((_, prior)) = best_paths_to_position.get(&last) {
+    if let Some((_, prior)) = best_paths_to_states.get(&last) {
         prior
             .iter()
             .map(|p| {
                 let mut new_path = path.clone();
                 new_path.push(*p);
 
-                follow_paths_back(new_path, &best_paths_to_position)
+                follow_paths_back(new_path, &best_paths_to_states)
             })
             .flatten()
             .collect()
@@ -220,10 +231,26 @@ mod tests {
     }
 
     #[test]
-    fn test_part_two_alt() {
+    fn test_part_two_ex_2() {
         let result = part_two(&advent_of_code::template::read_file_part(
             "examples", DAY, 2,
         ));
         assert_eq!(result, Some(64));
+    }
+
+    #[test]
+    fn test_part_one_ex_3() {
+        let result = part_one(&advent_of_code::template::read_file_part(
+            "examples", DAY, 3,
+        ));
+        assert_eq!(result, Some(3006));
+    }
+
+    #[test]
+    fn test_part_two_ex_3() {
+        let result = part_two(&advent_of_code::template::read_file_part(
+            "examples", DAY, 3,
+        ));
+        assert_eq!(result, Some(10));
     }
 }
