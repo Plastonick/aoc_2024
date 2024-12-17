@@ -12,7 +12,7 @@ type Point = Point2D<isize, isize>;
 type Vector = Vector2D<isize, isize>;
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
-struct Particle {
+struct State {
     position: Point,
     direction: Vector,
 }
@@ -21,7 +21,7 @@ pub fn part_one(input: &str) -> Option<usize> {
     let (start, end, map) = parse(input);
 
     let (_, cost) = find_all_optimal_paths(
-        Particle {
+        State {
             position: start,
             direction: vec2(0, 1),
         },
@@ -37,7 +37,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     let (start, end, map) = parse(input);
 
     let (paths, _) = find_all_optimal_paths(
-        Particle {
+        State {
             position: start,
             direction: vec2(0, 1),
         },
@@ -50,7 +50,7 @@ pub fn part_two(input: &str) -> Option<usize> {
 }
 
 fn find_all_optimal_paths(
-    from: Particle,
+    from: State,
     end: Point,
     map: &HashSet<Point>,
 ) -> Option<(Vec<Vec<Point>>, usize)> {
@@ -78,7 +78,7 @@ fn find_all_optimal_paths(
                 .or_insert((usize::MAX, vec![]));
 
             if neighbour_cost > *best_cost {
-                // this is more expensive than what we've seen previously, ignore it
+                // this is more expensive way to get to the same state, ignore
                 continue;
             }
 
@@ -89,7 +89,7 @@ fn find_all_optimal_paths(
                     (neighbour_cost, vec![particle.position]),
                 );
             } else if neighbour_cost == *best_cost {
-                println!("Adding duplicate prior");
+                // println!("Adding duplicate prior");
 
                 // this is an equivalently expensive way of getting here, include it!
                 prev_points.push(particle.position)
@@ -109,22 +109,18 @@ fn find_all_optimal_paths(
 
 fn follow_paths_back(
     path: Vec<Point>,
-    backs: &HashMap<Point, (usize, Vec<Point>)>,
+    best_paths_to_position: &HashMap<Point, (usize, Vec<Point>)>,
 ) -> Vec<Vec<Point>> {
     let &last = path.last().unwrap();
 
-    if let Some((_, prior)) = backs.get(&last) {
-        if prior.len() == 2 {
-            println!("found a fork point: ({}, {})", last.x, last.y)
-        }
-
+    if let Some((_, prior)) = best_paths_to_position.get(&last) {
         prior
             .iter()
             .map(|p| {
                 let mut new_path = path.clone();
                 new_path.push(*p);
 
-                follow_paths_back(new_path, &backs)
+                follow_paths_back(new_path, &best_paths_to_position)
             })
             .flatten()
             .collect()
@@ -133,28 +129,28 @@ fn follow_paths_back(
     }
 }
 
-fn get_neighbours(particle: &Particle, map: &HashSet<Point>) -> Vec<(Particle, usize)> {
+fn get_neighbours(particle: &State, map: &HashSet<Point>) -> Vec<(State, usize)> {
     // move forward or turn 90º either direction
     let d1 = vec2(particle.direction.y, -particle.direction.x);
     let d2 = vec2(-particle.direction.y, particle.direction.x);
 
     [
         (
-            Particle {
+            State {
                 position: particle.position + particle.direction,
                 direction: particle.direction,
             },
             1,
         ),
         (
-            Particle {
+            State {
                 position: particle.position + d1,
                 direction: d1,
             },
             1001,
         ),
         (
-            Particle {
+            State {
                 position: particle.position + d2,
                 direction: d2,
             },
