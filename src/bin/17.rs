@@ -8,7 +8,32 @@ const B: usize = 1;
 const C: usize = 2;
 
 pub fn part_one(input: &str) -> Option<String> {
+    let (registers, program) = parse(input);
+
+    Some(run_program(&registers, &program))
+}
+
+pub fn part_two(input: &str) -> Option<usize> {
     let (mut registers, program) = parse(input);
+    let program_string = program
+        .iter()
+        .flat_map(|(a, b)| [a.to_string(), b.to_string()])
+        .join(",");
+
+    let mut a_val = 0;
+    registers[A] = a_val;
+
+    while run_program(&registers, &program) != program_string {
+        a_val += 1;
+
+        registers[A] = a_val;
+    }
+
+    Some(a_val)
+}
+
+fn run_program(registers: &Vec<usize>, program: &Vec<(usize, usize)>) -> String {
+    let mut registers = registers.clone();
     let mut instruction_pointer = 0;
     let mut output = vec![];
 
@@ -47,11 +72,7 @@ pub fn part_one(input: &str) -> Option<String> {
         instruction_pointer += 1;
     }
 
-    Some(output.iter().map(|x| x.to_string()).join(","))
-}
-
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+    output.iter().map(|x| x.to_string()).join(",")
 }
 
 fn adv(registers: &Vec<usize>, combo_operand: usize) -> usize {
@@ -92,7 +113,9 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        let result = part_two(&advent_of_code::template::read_file_part(
+            "examples", DAY, 2,
+        ));
+        assert_eq!(result, Some(117440));
     }
 }
