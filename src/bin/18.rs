@@ -22,26 +22,32 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<String> {
-    // TODO, make this faster, at _least_ do a binary tree search...
     let (byte_points, bounds, take) = parse(input);
 
-    for i in take..byte_points.len() {
+    let mut range = take..byte_points.len();
+    while !range.is_empty() {
+        let mid_range = (range.start + range.end) / 2;
+
         let cost = min_path(
             point2(0, 0),
             &bounds,
             &byte_points
                 .clone()
                 .into_iter()
-                .take(i)
+                .take(mid_range)
                 .collect::<HashSet<Point>>(),
         );
 
         if cost.is_none() {
-            return Some(format!("{},{}", byte_points[i - 1].x, byte_points[i - 1].y));
+            range.end = mid_range;
+        } else {
+            range.start = mid_range + 1;
         }
     }
 
-    None
+    let blocking_byte = byte_points[range.start - 1];
+
+    Some(format!("{},{}", blocking_byte.x, blocking_byte.y))
 }
 
 fn min_path(start: Point, bounds: &Point, byte_points: &HashSet<Point>) -> Option<usize> {
