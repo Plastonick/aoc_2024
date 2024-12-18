@@ -57,7 +57,7 @@ pub fn part_two(input: &str) -> Option<usize> {
         }
 
         // move our scanner back a bit more
-        start_file_index = start_file_index - 1;
+        start_file_index -= 1;
     }
 
     Some(calculate_checksum(&output))

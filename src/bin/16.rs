@@ -56,7 +56,7 @@ fn find_all_optimal_paths(
 ) -> Option<(Vec<Vec<Point>>, usize)> {
     let mut best_cost_to_state: HashMap<State, (usize, Vec<State>)> = HashMap::new();
     let mut queue = PriorityQueue::new();
-    queue.push(from.clone(), Reverse(0));
+    queue.push(from, Reverse(0));
 
     let mut optimal_cost = None;
     let mut end_states = vec![];
@@ -72,7 +72,7 @@ fn find_all_optimal_paths(
             optimal_cost = Some(particle_cost);
         }
 
-        let neighbours = get_neighbours(&particle, &map);
+        let neighbours = get_neighbours(&particle, map);
         if neighbours.len() == 100000000 {
             panic!();
         }
@@ -81,7 +81,7 @@ fn find_all_optimal_paths(
             let neighbour_cost = particle_cost + move_cost;
 
             let (best_cost, prev_points) = best_cost_to_state
-                .entry(neighbour.clone())
+                .entry(neighbour)
                 .or_insert((usize::MAX, vec![]));
 
             if neighbour_cost > *best_cost {
@@ -91,7 +91,7 @@ fn find_all_optimal_paths(
 
             if neighbour_cost < *best_cost {
                 // this is a cheaper way of getting here, reset the entry
-                best_cost_to_state.insert(neighbour.clone(), (neighbour_cost, vec![particle]));
+                best_cost_to_state.insert(neighbour, (neighbour_cost, vec![particle]));
             } else if neighbour_cost == *best_cost {
                 // println!("Adding duplicate prior");
 
@@ -127,13 +127,12 @@ fn follow_paths_back(
     if let Some((_, prior)) = best_paths_to_states.get(&last) {
         prior
             .iter()
-            .map(|p| {
+            .flat_map(|p| {
                 let mut new_path = path.clone();
                 new_path.push(*p);
 
-                follow_paths_back(new_path, &best_paths_to_states)
+                follow_paths_back(new_path, best_paths_to_states)
             })
-            .flatten()
             .collect()
     } else {
         vec![path]
@@ -180,7 +179,7 @@ fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
     let map = input
         .lines()
         .enumerate()
-        .map(|(r, row)| {
+        .flat_map(|(r, row)| {
             row.chars()
                 .enumerate()
                 .filter(|(_, ch)| ch != &'#')
@@ -200,7 +199,6 @@ fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
                 })
                 .collect::<Vec<Point>>()
         })
-        .flatten()
         .collect::<HashSet<Point>>();
 
     (start.unwrap(), end.unwrap(), map)

@@ -47,11 +47,11 @@ fn move_guard(
     walls: &HashSet<Point>,
     obstruction: &Option<Point>,
 ) -> (HashSet<(Point, Direction)>, bool) {
-    let mut moving_guard = initial.clone();
+    let mut moving_guard = *initial;
     let mut direction = vec2(-1, 0);
     let mut states_seen: HashSet<(Point, Direction)> = HashSet::new();
 
-    while within_bounds(&moving_guard, &bounds) {
+    while within_bounds(&moving_guard, bounds) {
         let state = (moving_guard, direction);
         if states_seen.contains(&state) {
             return (states_seen, true);
@@ -79,7 +79,7 @@ fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
     let walls = input
         .lines()
         .enumerate()
-        .map(|(r, line)| {
+        .flat_map(|(r, line)| {
             line.chars()
                 .enumerate()
                 .filter_map(|(c, ch)| {
@@ -97,7 +97,6 @@ fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
                 })
                 .collect::<HashSet<Point>>()
         })
-        .flatten()
         .collect::<HashSet<Point>>();
 
     (guard.unwrap(), bounds, walls)

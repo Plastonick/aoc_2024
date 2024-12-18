@@ -19,7 +19,7 @@ fn find_test_sum(input: &str, operations: &Vec<Operation>) -> Option<usize> {
     let valid = equations
         .into_iter()
         .filter_map(|(test, numbers)| {
-            if is_valid(test, &numbers, &operations) {
+            if is_valid(test, &numbers, operations) {
                 Some(test)
             } else {
                 None
@@ -53,7 +53,7 @@ fn is_valid(test: usize, numbers: &Vec<usize>, operations: &Vec<Operation>) -> b
             new_numbers.push(*number)
         }
 
-        if is_valid(test, &new_numbers, &operations) {
+        if is_valid(test, &new_numbers, operations) {
             return true;
         }
     }

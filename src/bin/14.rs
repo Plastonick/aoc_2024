@@ -63,7 +63,7 @@ pub fn part_two(input: &str) -> Option<u32> {
 
         let new_robots: Vec<Robot> = robots
             .iter()
-            .map(|robot| move_robot(&robot, i, &bounds))
+            .map(|robot| move_robot(robot, i, &bounds))
             .collect();
 
         let new_unique = new_robots
@@ -114,7 +114,7 @@ fn get_quadrants(robots: &Vec<Robot>, bounds: &Point2D<isize>) -> Vec<u32> {
     robots
         .iter()
         .fold([0, 0, 0, 0, 0], |mut acc: [u32; 5], robot| {
-            acc[robot.quadrant(&bounds)] += 1;
+            acc[robot.quadrant(bounds)] += 1;
 
             acc
         })

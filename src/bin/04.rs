@@ -27,13 +27,12 @@ pub fn part_two(input: &str) -> Option<usize> {
     let a_positions = grid
         .iter()
         .enumerate()
-        .map(|(r, row)| {
+        .flat_map(|(r, row)| {
             row.iter()
                 .enumerate()
                 .filter_map(|(c, ch)| if *ch == 'A' { Some((r, c)) } else { None })
                 .collect::<Vec<(usize, usize)>>()
         })
-        .flatten()
         .filter(|(r, c)| {
             // only As just off the edge of the grid are possible
             *r > 0 && *c > 0 && *r < grid.len() - 1 && *c < grid[*r].len() - 1
@@ -62,7 +61,7 @@ fn find_instances(grid: &Grid, word: &Vec<char>) -> usize {
 
     for (i, row) in grid.iter().enumerate() {
         for (j, _) in row.iter().enumerate() {
-            total += matching_directions(&grid, (i, j), &word);
+            total += matching_directions(grid, (i, j), word);
         }
     }
 
@@ -71,14 +70,13 @@ fn find_instances(grid: &Grid, word: &Vec<char>) -> usize {
 
 fn matching_directions(grid: &Grid, starts_from: (usize, usize), word: &Vec<char>) -> usize {
     let directions = (-1..=1)
-        .map(|r| (-1..=1).map(|c| (r, c)).collect::<Vec<(isize, isize)>>())
-        .flatten()
+        .flat_map(|r| (-1..=1).map(|c| (r, c)).collect::<Vec<(isize, isize)>>())
         .filter(|(r, c)| *r != 0 || *c != 0)
         .collect::<Vec<(isize, isize)>>();
 
     directions
         .iter()
-        .filter(|d| word_found_at(&grid, starts_from, **d, word))
+        .filter(|d| word_found_at(grid, starts_from, **d, word))
         .count()
 }
 

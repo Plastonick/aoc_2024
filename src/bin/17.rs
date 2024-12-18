@@ -42,9 +42,9 @@ pub fn part_two(input: &str) -> Option<usize> {
 
         octal_paths = octal_paths
             .iter()
-            .map(|octal| {
+            .flat_map(|octal| {
                 // find all possible digits, and return these as new octal lists
-                find_valid_digits(&program, &octal, expected_output_digit)
+                find_valid_digits(&program, octal, expected_output_digit)
                     .iter()
                     .map(|d| {
                         // insert this potentially digit as the new first digit in our octal
@@ -55,11 +55,10 @@ pub fn part_two(input: &str) -> Option<usize> {
                     })
                     .collect::<Vec<Vec<usize>>>()
             })
-            .flatten()
             .collect()
     }
 
-    octal_paths.iter().min().map(|x| octals_to_int(&x))
+    octal_paths.iter().min().map(octals_to_int)
 }
 
 fn find_valid_digits(
@@ -77,11 +76,10 @@ fn find_valid_digits(
             assert!(octals.len() <= 16);
 
             let registers = vec![octals_to_int(&octals), 0, 0];
-            let output = run_program(&registers, &program);
+            let output = run_program(&registers, program);
 
             output[0] == expected
         })
-        .map(|i| i)
         .collect()
 }
 

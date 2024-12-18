@@ -42,11 +42,11 @@ fn trail_head_score(pos: (usize, usize), height_map: &Vec<Vec<u8>>, unique: bool
     let mut paths = vec![pos];
 
     let mut value = 0;
-    while paths.len() > 0 && value != 9 {
+    while !paths.is_empty() && value != 9 {
         paths = paths
             .into_iter()
-            .map(|node| get_successors(node, &height_map))
-            .filter(|p| p.len() > 0)
+            .map(|node| get_successors(node, height_map))
+            .filter(|p| !p.is_empty())
             .flatten()
             .collect();
 

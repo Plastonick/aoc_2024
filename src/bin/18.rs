@@ -55,7 +55,7 @@ fn min_path(start: Point, bounds: &Point, byte_points: &HashSet<Point>) -> Optio
             break;
         }
 
-        let neighbours = neighbours(&element, &bounds, &byte_points);
+        let neighbours = neighbours(&element, bounds, byte_points);
 
         neighbours
             .into_iter()
@@ -65,7 +65,7 @@ fn min_path(start: Point, bounds: &Point, byte_points: &HashSet<Point>) -> Optio
             });
     }
 
-    visited.get(&bounds).map(|x| x.to_owned())
+    visited.get(bounds).map(|x| x.to_owned())
 }
 
 fn neighbours(point: &Point, bounds: &Point, byte_points: &HashSet<Point>) -> Vec<Point> {

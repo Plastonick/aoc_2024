@@ -38,7 +38,7 @@ fn calculate_safety_score(
     let mut boxes = boxes;
 
     for direction in directions {
-        (robot, boxes) = move_robot(robot, direction, boxes, &walls);
+        (robot, boxes) = move_robot(robot, direction, boxes, walls);
 
         // uncomment to view the robot progression
         // _print_map(&robot, &boxes, &walls);
@@ -46,8 +46,8 @@ fn calculate_safety_score(
     }
 
     boxes
-        .iter()
-        .map(|(p, _)| get_left_most_box_in_system(p, &boxes))
+        .keys()
+        .map(|p| get_left_most_box_in_system(p, &boxes))
         .unique()
         .map(|b| b.x * 100 + b.y)
         .sum()
@@ -59,13 +59,13 @@ fn move_robot(
     boxes: HashMap<Point, Point>,
     walls: &HashSet<Point>,
 ) -> (Point, HashMap<Point, Point>) {
-    let Some(boxes_to_move) = moveable_system(robot, direction, &boxes, &walls) else {
+    let Some(boxes_to_move) = moveable_system(robot, direction, &boxes, walls) else {
         return (robot, boxes);
     };
 
     let mut new_boxes = boxes.clone();
     for (box_to_move, _) in boxes_to_move.iter() {
-        new_boxes.remove(&box_to_move);
+        new_boxes.remove(box_to_move);
     }
     for (box_to_move, connected_box) in boxes_to_move {
         new_boxes.insert(box_to_move.add(*direction), connected_box.add(*direction));
@@ -104,7 +104,7 @@ fn moveable_system(
 
             // we're trying to push a box! Great!
             // Add that point to our system, and add anything it's also pushing for consideration
-            for (box_piece, connected_piece) in get_system_for_box_segment(&point, &boxes) {
+            for (box_piece, connected_piece) in get_system_for_box_segment(&point, boxes) {
                 system.insert(box_piece, connected_piece);
 
                 new_wave.push(box_piece.add(*direction)); // the space with which this box piece is trying to move into
@@ -122,11 +122,11 @@ fn get_system_for_box_segment(
     segment: &Point,
     boxes: &HashMap<Point, Point>,
 ) -> Vec<(Point, Point)> {
-    let mut next_segment = boxes.get(&segment).unwrap();
+    let mut next_segment = boxes.get(segment).unwrap();
     let mut segments = vec![(*segment, *next_segment)];
 
     while next_segment != segment {
-        let connected_segment = boxes.get(&next_segment).unwrap();
+        let connected_segment = boxes.get(next_segment).unwrap();
 
         segments.push((*next_segment, *connected_segment));
         next_segment = connected_segment;
@@ -136,7 +136,7 @@ fn get_system_for_box_segment(
 }
 
 fn get_left_most_box_in_system(segment: &Point, boxes: &HashMap<Point, Point>) -> Point {
-    let system = get_system_for_box_segment(&segment, &boxes);
+    let system = get_system_for_box_segment(segment, boxes);
 
     system
         .into_iter()
@@ -186,7 +186,7 @@ fn parse(input: &str) -> (Point, HashSet<Point>, HashMap<Point, Point>, Vec<Vect
 
     let directions = direction_string
         .lines()
-        .map(|l| {
+        .flat_map(|l| {
             l.chars().map(|ch| match ch {
                 '>' => vec2(0, 1),
                 '<' => vec2(0, -1),
@@ -197,7 +197,6 @@ fn parse(input: &str) -> (Point, HashSet<Point>, HashMap<Point, Point>, Vec<Vect
                 }
             })
         })
-        .flatten()
         .collect::<Vec<Vector>>();
 
     (robot.unwrap(), walls, boxes, directions)
@@ -226,7 +225,7 @@ fn _print_map(robot: &Point, boxes: &HashMap<Point, Point>, walls: &HashSet<Poin
             print!("{tile}");
         }
 
-        print!("\n");
+        println!();
     }
 
     // flush the stdout buffer

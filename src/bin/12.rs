@@ -19,7 +19,7 @@ pub fn part_two(input: &str) -> Option<i32> {
     let garden_score = get_regions(&garden)
         .iter()
         .map(|(region, _, _)| {
-            let num_sides = get_sides(&region);
+            let num_sides = get_sides(region);
 
             region.len() as i32 * num_sides
         })
@@ -38,9 +38,9 @@ fn get_regions(garden: &Garden) -> Vec<(HashSet<(i32, i32)>, i32, char)> {
         }
 
         let ch = *garden
-            .get(&plot)
-            .expect(&format!("No plot at position ({}, {})!", plot.0, plot.1));
-        let (region, perimeter) = get_region(plot, &garden);
+            .get(plot)
+            .unwrap_or_else(|| panic!("No plot at position ({}, {})!", plot.0, plot.1));
+        let (region, perimeter) = get_region(plot, garden);
         regions.push((region.clone(), perimeter, ch));
 
         for plot in region {
@@ -100,7 +100,7 @@ fn get_region(initial: &(i32, i32), garden: &Garden) -> (HashSet<(i32, i32)>, i3
         let mut new_wave = vec![];
 
         for plot in wave {
-            let neighbours = get_matching_neighbours(&plot, &garden);
+            let neighbours = get_matching_neighbours(&plot, garden);
 
             // the perimeter of a given plot is the number of neighbouring elements that _don't_ match its type
             perimeter += 4 - neighbours.len() as i32;
@@ -127,20 +127,19 @@ fn parse(input: &str) -> Garden {
     input
         .lines()
         .enumerate()
-        .map(|(r, row)| {
+        .flat_map(|(r, row)| {
             row.chars()
                 .enumerate()
                 .map(|(c, ch)| ((r as i32, c as i32), ch))
                 .collect::<Vec<((i32, i32), char)>>()
         })
-        .flatten()
         .collect::<Garden>()
 }
 
 fn get_matching_neighbours(of: &(i32, i32), garden: &Garden) -> Vec<(i32, i32)> {
     const DELTAS: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
-    let plot_type = garden.get(&of).expect("Couldn't find plot type");
+    let plot_type = garden.get(of).expect("Couldn't find plot type");
 
     DELTAS
         .iter()
