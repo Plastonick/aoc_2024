@@ -29,7 +29,38 @@ pub fn part_two(input: &str) -> Option<usize> {
         registers[A] = a_val;
     }
 
-    Some(a_val)
+    octal_paths.iter().min().map(|x| octals_to_int(&x))
+}
+
+fn find_valid_digits(
+    program: &Vec<(usize, usize)>,
+    octals: &Vec<usize>,
+    expected: usize,
+) -> Vec<usize> {
+    let mut octals = octals.clone();
+    octals.insert(0, 0);
+
+    (0..8_usize)
+        .filter(|&i| {
+            octals[0] = i;
+
+            assert!(octals.len() <= 16);
+
+            let registers = vec![octals_to_int(&octals), 0, 0];
+            let output = run_program(&registers, &program);
+
+            output[0] == expected
+        })
+        .map(|i| i)
+        .collect()
+}
+
+fn octals_to_int(octals: &Vec<usize>) -> usize {
+    octals
+        .iter()
+        .enumerate()
+        .map(|(exp, val)| val * 8_isize.pow(exp as u32) as usize)
+        .sum()
 }
 
 fn run_program(registers: &Vec<usize>, program: &Vec<(usize, usize)>) -> String {
