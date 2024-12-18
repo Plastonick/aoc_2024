@@ -10,23 +10,53 @@ const C: usize = 2;
 pub fn part_one(input: &str) -> Option<String> {
     let (registers, program) = parse(input);
 
-    Some(run_program(&registers, &program))
+    Some(
+        run_program(&registers, &program)
+            .iter()
+            .map(|x| x.to_string())
+            .join(","),
+    )
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    let (mut registers, program) = parse(input);
-    let program_string = program
-        .iter()
-        .flat_map(|(a, b)| [a.to_string(), b.to_string()])
-        .join(",");
+    // "cheating" by abusing properties of the input... I'm not sure how easy an input-independent performant solution is
+    // noticed that:
+    // - the program outputs one character per "iteration"
+    // - the values of B and C are determined entirely by the value of A
+    // - A decreased by a factor of 8 on each loop (which is why it's useful to think of A as an number in base-8)
+    // - so the _last_ digit of our input will necessarily be outputted for a value between 0 and 7
+    //      AND will be the _first_ digit of A (in base-8)
+    // - and the _second last_ digit outputted will be the _second_ digit of A, and so on
+    // - so build up the paths of what these characters can be, in BFS-style
 
-    let mut a_val = 0;
-    registers[A] = a_val;
+    let (_, program) = parse(input);
+    let program_list = program
+        .clone()
+        .into_iter()
+        .flat_map(|(a, b)| [a, b])
+        .collect::<Vec<usize>>();
 
-    while run_program(&registers, &program) != program_string {
-        a_val += 1;
+    let mut octal_paths = vec![vec![]];
+    for bit_index in 0..program_list.len() {
+        let expected_output_digit = program_list[program_list.len() - bit_index - 1];
 
-        registers[A] = a_val;
+        octal_paths = octal_paths
+            .iter()
+            .map(|octal| {
+                // find all possible digits, and return these as new octal lists
+                find_valid_digits(&program, &octal, expected_output_digit)
+                    .iter()
+                    .map(|d| {
+                        // insert this potentially digit as the new first digit in our octal
+                        let mut octal = octal.clone();
+                        octal.insert(0, *d);
+
+                        octal
+                    })
+                    .collect::<Vec<Vec<usize>>>()
+            })
+            .flatten()
+            .collect()
     }
 
     octal_paths.iter().min().map(|x| octals_to_int(&x))
@@ -63,7 +93,7 @@ fn octals_to_int(octals: &Vec<usize>) -> usize {
         .sum()
 }
 
-fn run_program(registers: &Vec<usize>, program: &Vec<(usize, usize)>) -> String {
+fn run_program(registers: &Vec<usize>, program: &Vec<(usize, usize)>) -> Vec<usize> {
     let mut registers = registers.clone();
     let mut instruction_pointer = 0;
     let mut output = vec![];
@@ -103,7 +133,7 @@ fn run_program(registers: &Vec<usize>, program: &Vec<(usize, usize)>) -> String 
         instruction_pointer += 1;
     }
 
-    output.iter().map(|x| x.to_string()).join(",")
+    output
 }
 
 fn adv(registers: &Vec<usize>, combo_operand: usize) -> usize {
