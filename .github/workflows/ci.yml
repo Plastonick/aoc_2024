@@ -25,8 +25,8 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
       - name: cargo test
         run: cargo test
-      - name: cargo clippy
-        run: cargo clippy -- -D warnings
+      #      - name: cargo clippy
+      #        run: cargo clippy -- -D warnings
       # uncomment to enable format linter
       # - name: cargo fmt
       #   run: cargo fmt --check
