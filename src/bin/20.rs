@@ -7,19 +7,27 @@ advent_of_code::solution!(20);
 type Point = Point2D<isize, isize>;
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let (start, end, save_atleast, racetrack) = parse(input);
+    let (start, end, save_minimum, racetrack) = parse(input);
 
-    let mut n_cheats = 0;
     let time_map = generate_time_map(start, &end, &racetrack);
-    for (point, _) in &time_map {
-        n_cheats += num_cheats(point, &time_map, save_atleast);
-    }
+    let num_cheats = time_map
+        .iter()
+        .map(|(point, _)| num_cheats(point, &time_map, save_minimum, 2))
+        .sum::<usize>();
 
-    Some(n_cheats)
+    Some(num_cheats)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let (start, end, save_minimum, racetrack) = parse(input);
+
+    let time_map = generate_time_map(start, &end, &racetrack);
+    let num_cheats = time_map
+        .iter()
+        .map(|(point, _)| num_cheats(point, &time_map, save_minimum, 20))
+        .sum::<usize>();
+
+    Some(num_cheats)
 }
 
 fn generate_time_map(
@@ -53,43 +61,36 @@ fn generate_time_map(
 fn neighbours(point: &Point, racetrack: &HashSet<Point>) -> Vec<Point> {
     [
         point.add(vec2(1, 0)),
-        point.sub(vec2(1, 0)),
+        point.add(vec2(-1, 0)),
         point.add(vec2(0, 1)),
-        point.sub(vec2(0, 1)),
+        point.add(vec2(0, -1)),
     ]
     .into_iter()
     .filter(|p| racetrack.contains(p))
     .collect()
 }
 
-fn num_cheats(point: &Point, time_map: &HashMap<Point, usize>, save_atleast: usize) -> usize {
+fn num_cheats(
+    point: &Point,
+    time_map: &HashMap<Point, usize>,
+    save_minimum: usize,
+    max_distance: usize,
+) -> usize {
     let point_cost = time_map[point];
 
-    [
-        vec2(2, 0),
-        vec2(-2, 0),
-        vec2(0, 2),
-        vec2(0, -2),
-        vec2(1, 1),
-        vec2(-1, 1),
-        vec2(1, -1),
-        vec2(-1, -1),
-    ]
-    .into_iter()
-    .filter_map(|d| {
-        let neighbour = point.add(d);
+    time_map
+        .iter()
+        .filter(|(n, cost)| {
+            let delta = n.sub(*point).abs();
+            let within_min_distance = delta.x + delta.y <= max_distance as isize;
 
-        if let Some(cost) = time_map.get(&neighbour) {
-            if point_cost + save_atleast + 1 < *cost {
-                Some(true)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    })
-    .count()
+            let cheat_cost = point_cost + (delta.x + delta.y) as usize;
+            let actual_saving = cheat_cost + save_minimum <= **cost;
+
+            within_min_distance && actual_saving
+        })
+        .map(|(n, _)| format!("{}, {} to {}, {}", point.x, point.y, n.x, n.y))
+        .count()
 }
 
 fn parse(input: &str) -> (Point, Point, usize, HashSet<Point>) {
@@ -122,9 +123,9 @@ fn parse(input: &str) -> (Point, Point, usize, HashSet<Point>) {
         })
         .collect::<HashSet<Point>>();
 
-    let save_atleast = if start.unwrap().x == 3 { 50 } else { 100 };
+    let save_minimum = if start.unwrap().x == 3 { 50 } else { 100 };
 
-    (start.unwrap(), end.unwrap(), save_atleast, racetrack)
+    (start.unwrap(), end.unwrap(), save_minimum, racetrack)
 }
 
 #[cfg(test)]
@@ -140,6 +141,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(3));
+        assert_eq!(result, Some(285));
     }
 }
