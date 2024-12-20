@@ -10,9 +10,7 @@ pub fn part_one(input: &str) -> Option<usize> {
     let (start, end, save_minimum, racetrack) = parse(input);
 
     let time_map = generate_time_map(start, &end, &racetrack);
-    let num_cheats = time_map
-        .iter()
-        .map(|(point, _)| num_cheats(point, &time_map, save_minimum, 2))
+    let num_cheats = time_map.keys().map(|point| num_cheats(point, &time_map, save_minimum, 2))
         .sum::<usize>();
 
     Some(num_cheats)
@@ -22,9 +20,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     let (start, end, save_minimum, racetrack) = parse(input);
 
     let time_map = generate_time_map(start, &end, &racetrack);
-    let num_cheats = time_map
-        .iter()
-        .map(|(point, _)| num_cheats(point, &time_map, save_minimum, 20))
+    let num_cheats = time_map.keys().map(|point| num_cheats(point, &time_map, save_minimum, 20))
         .sum::<usize>();
 
     Some(num_cheats)
@@ -108,11 +104,11 @@ fn parse(input: &str) -> (Point, Point, usize, HashSet<Point>) {
 
                     match ch {
                         'S' => {
-                            start = Some(point.clone());
+                            start = Some(point);
                             Some(point)
                         }
                         'E' => {
-                            end = Some(point.clone());
+                            end = Some(point);
                             Some(point)
                         }
                         '.' => Some(point),
