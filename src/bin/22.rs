@@ -38,27 +38,33 @@ pub fn part_two(input: &str) -> Option<isize> {
     let sequence_value_maps = sequences
         .iter()
         .map(build_4_sequence_value_map)
-        .collect::<Vec<HashMap<Vec<isize>, isize>>>();
+        .collect::<Vec<HashMap<isize, isize>>>();
 
     // now iterate over all the possible unique 4-sequences and calculate scores
     sequence_value_maps
         .iter()
         .flat_map(|x| x.keys())
+        .map(|x| x.to_owned())
         .unique()
         .map(|seq| {
             sequence_value_maps
                 .iter()
-                .filter_map(|value_map| value_map.get(seq))
+                .filter_map(|value_map| value_map.get(&seq))
                 .sum::<isize>()
         })
         .max()
 }
 
-fn build_4_sequence_value_map(sequence: &Vec<(isize, isize)>) -> HashMap<Vec<isize>, isize> {
+fn build_4_sequence_value_map(sequence: &Vec<(isize, isize)>) -> HashMap<isize, isize> {
     let mut sequence_values = HashMap::new();
 
     for window in sequence.windows(4) {
-        let key = window.iter().map(|el| el.1).collect::<Vec<isize>>();
+        let key = window
+            .iter()
+            .enumerate()
+            .map(|(order, el)| el.1 * 20_isize.pow(order as u32))
+            .sum::<isize>();
+
         if sequence_values.contains_key(&key) {
             continue;
         }
