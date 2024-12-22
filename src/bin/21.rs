@@ -26,6 +26,8 @@ pub fn part_one(input: &str) -> Option<usize> {
         vec![' ', '0', 'A'],
     ]);
 
+    //   ^ A
+    // < v >
     let directional_keypad = map_chars(vec![vec![' ', '^', 'A'], vec!['<', 'v', '>']]);
 
     let mut score = 0;
@@ -34,25 +36,29 @@ pub fn part_one(input: &str) -> Option<usize> {
 
         let code = vec![vec!['A'], code.clone()].concat(); // we want to start at 'A'
 
-        let robot1_path = paths_for(&code, &input_keypad);
-        let robot2_path = paths_for(
+        let robot1_path = path_for(&code, &input_keypad);
+        let robot2_path = path_for(
             &vec![vec!['A'], robot1_path.clone()].concat(),
             &directional_keypad,
         );
-        let human_path = paths_for(
+        let human_path = path_for(
             &vec![vec!['A'], robot2_path.clone()].concat(),
             &directional_keypad,
         );
 
-        // println!("{} x {}", &human_path.len(), numeric_score);
+        println!("Num: {} and path: {}", numeric_score, human_path.len());
 
         score += numeric_score * human_path.len();
     }
 
+    // 225234 is WRONG
+    // 221338 is WRONG
+    // 213766 is WRONG
+
     Some(score)
 }
 
-fn paths_for(code: &Vec<char>, keypad: &Keypad) -> Vec<char> {
+fn path_for(code: &Vec<char>, keypad: &Keypad) -> Vec<char> {
     code.iter()
         .tuple_windows()
         .flat_map(|(from, to)| {
@@ -63,18 +69,29 @@ fn paths_for(code: &Vec<char>, keypad: &Keypad) -> Vec<char> {
             let up_down_ch = if delta.x < 0 { '^' } else { 'v' };
             let left_right_ch = if delta.y > 0 { '>' } else { '<' };
 
+            let vert = vec![up_down_ch; delta.x.abs() as usize];
+            let horz = vec![left_right_ch; delta.y.abs() as usize];
+
             // avoid blank space?
             let blank_pos = keypad.get(&' ').unwrap();
             if from_pos.x == blank_pos.x && to_pos.y == blank_pos.y {
+                // currently on same row, going to same column as blank
                 vec![
-                    vec![up_down_ch; delta.x.abs() as usize],
-                    vec![left_right_ch; delta.y.abs() as usize],
+                    vert,
+                    horz,
+                    vec!['A'], // need to select it too!
+                ]
+            } else if left_right_ch == '<' {
+                // left before up/down before right
+                vec![
+                    horz,
+                    vert,
                     vec!['A'], // need to select it too!
                 ]
             } else {
                 vec![
-                    vec![left_right_ch; delta.y.abs() as usize],
-                    vec![up_down_ch; delta.x.abs() as usize],
+                    vert,
+                    horz,
                     vec!['A'], // need to select it too!
                 ]
             }
