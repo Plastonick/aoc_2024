@@ -31,37 +31,48 @@ struct Node {
     value: Value,
 }
 
-pub fn part_one(input: &str) -> Option<usize> {
-    let (nodes, address_map) = parse(input);
-
-    Some(
-        address_map
-            .iter()
-            .filter(|(k, _)| k.starts_with('z'))
-            .sorted_by(|(a, _), (b, _)| a.cmp(b))
-            .map(|(_, &address)| nodes[address].clone())
-            .map(|node| derive_value(&node))
-            .enumerate()
-            .map(|(ord, value)| value * 2_usize.pow(ord as u32))
-            .sum(),
-    )
-}
-
-fn derive_value(node: &Node) -> usize {
-    match &node.value {
-        Raw(value) => *value,
-        Derived(process) => match process.operation {
-            Operation::And => derive_value(&process.input1).bitand(derive_value(&process.input2)),
-            Operation::Or => derive_value(&process.input1).bitor(derive_value(&process.input2)),
-            Operation::Xor => derive_value(&process.input1).bitxor(derive_value(&process.input2)),
-        },
+impl Node {
+    fn derive_value(&self) -> usize {
+        match &self.value {
+            Raw(value) => *value,
+            Derived(process) => match process.operation {
+                Operation::And => process
+                    .input1
+                    .derive_value()
+                    .bitand(process.input2.derive_value()),
+                Operation::Or => process
+                    .input1
+                    .derive_value()
+                    .bitor(process.input2.derive_value()),
+                Operation::Xor => process
+                    .input1
+                    .derive_value()
+                    .bitxor(process.input2.derive_value()),
+            },
+        }
     }
 }
 
+pub fn part_one(input: &str) -> Option<usize> {
+    let (nodes, address_map) = parse(input);
+
+    Some(collated_values('z', &nodes, &address_map))
+}
+
 pub fn part_two(input: &str) -> Option<u32> {
-    let (values, processes) = parse(input);
-    // let x = calc_value(&values, 'x');
-    // let y = calc_value(&values, 'y');
+    let (nodes, address_map) = parse(input);
+    let x = collated_values('x', &nodes, &address_map);
+    let y = collated_values('y', &nodes, &address_map);
+    let z = collated_values('z', &nodes, &address_map);
+    let expected_sum = x + y;
+    let actual_sum = z;
+
+    println!(
+        "Expected {} but got {} for a diff of {}",
+        expected_sum,
+        actual_sum,
+        to_bin(expected_sum.abs_diff(actual_sum))
+    );
 
     // let composed_values = composed_values(values.clone(), processes.clone());
     //
@@ -110,6 +121,17 @@ pub fn part_two(input: &str) -> Option<u32> {
     // }
 
     None
+}
+
+fn collated_values(prefix: char, nodes: &Vec<Node>, address_map: &HashMap<String, usize>) -> usize {
+    address_map
+        .iter()
+        .filter(|(k, _)| k.starts_with(prefix))
+        .sorted_by(|(a, _), (b, _)| a.cmp(b))
+        .map(|(_, &address)| nodes[address].derive_value())
+        .enumerate()
+        .map(|(ord, value)| value * 2_usize.pow(ord as u32))
+        .sum()
 }
 
 // fn find_best_switch(
