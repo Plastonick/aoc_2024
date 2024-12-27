@@ -32,22 +32,22 @@ struct Node {
 }
 
 impl Node {
-    fn derive_value(&self, nodes: &Vec<Node>, stack: usize) -> Option<usize> {
-        if stack == 0 {
+    fn derive_value(&self, nodes: &Vec<Node>, depth: u8) -> Option<usize> {
+        if depth == 0 {
             None
         } else {
             Some(match &self.value {
                 Raw(value) => *value,
                 Derived(process) => match process.operation {
                     Operation::And => nodes[process.input1]
-                        .derive_value(&nodes, stack - 1)?
-                        .bitand(nodes[process.input2].derive_value(&nodes, stack - 1)?),
+                        .derive_value(&nodes, depth - 1)?
+                        .bitand(nodes[process.input2].derive_value(&nodes, depth - 1)?),
                     Operation::Or => nodes[process.input1]
-                        .derive_value(&nodes, stack - 1)?
-                        .bitor(nodes[process.input2].derive_value(&nodes, stack - 1)?),
+                        .derive_value(&nodes, depth - 1)?
+                        .bitor(nodes[process.input2].derive_value(&nodes, depth - 1)?),
                     Operation::Xor => nodes[process.input1]
-                        .derive_value(&nodes, stack - 1)?
-                        .bitxor(nodes[process.input2].derive_value(&nodes, stack - 1)?),
+                        .derive_value(&nodes, depth - 1)?
+                        .bitxor(nodes[process.input2].derive_value(&nodes, depth - 1)?),
                 },
             })
         }
@@ -65,19 +65,58 @@ impl Node {
             }
         }
     }
+
+    fn to_string(&self, nodes: &Vec<Node>, addresses: &Vec<String>) -> String {
+        match &self.value {
+            Derived(process) => {
+                let node1 = nodes.get(process.input1).unwrap();
+                let node2 = nodes.get(process.input2).unwrap();
+                let op = match process.operation {
+                    Operation::And => "AND",
+                    Operation::Or => "OR",
+                    Operation::Xor => "XOR",
+                };
+
+                format!(
+                    "({} {} {})",
+                    node1.to_string(nodes, addresses),
+                    op,
+                    node2.to_string(nodes, addresses)
+                )
+            }
+            Raw(_) => addresses[self.address].to_string(),
+        }
+    }
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
     let (nodes, _, address_map) = parse(input);
 
-    Some(collated_values('z', &nodes, &address_map))
+    collated_values('z', &nodes, &address_map)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
     let (mut nodes, addresses, address_map) = parse(input);
-    let x = collated_values('x', &nodes, &address_map);
-    let y = collated_values('y', &nodes, &address_map);
+    let x = collated_values('x', &nodes, &address_map).unwrap();
+    let y = collated_values('y', &nodes, &address_map).unwrap();
     let expected_sum = x + y;
+
+    let node_maps = nodes
+        .iter()
+        .filter(|n| addresses[n.address].starts_with('z'))
+        .sorted_by(|a, b| addresses[a.address].cmp(&addresses[b.address]))
+        .map(|n| {
+            format!(
+                "{} => {}",
+                addresses[n.address],
+                n.to_string(&nodes, &addresses)
+            )
+        })
+        .join("\n");
+
+    println!("{}", node_maps);
+
+    panic!();
 
     // println!(
     //     "Expected {} but got {} with bitwise diffs {}",
@@ -127,7 +166,7 @@ fn fix_nodes(
     addresses: &Vec<String>,
     expected: usize,
 ) -> Option<Vec<Node>> {
-    let actual_sum = collated_values('z', &nodes, &address_map);
+    let actual_sum = collated_values('z', &nodes, &address_map).unwrap();
     println!("exp: {}\nact: {}", to_bin(actual_sum), to_bin(expected));
 
     let bit_diffs = to_bin(actual_sum.bitxor(expected));
@@ -177,7 +216,11 @@ fn fix_nodes(
             new_nodes[a_node.address] = new_a;
             new_nodes[b_node.address] = new_b;
 
-            let new_value = collated_values('z', &new_nodes, &address_map);
+            let Some(new_value) = collated_values('z', &new_nodes, &address_map) else {
+                // possible invalid swap due to infinite loop?
+
+                continue;
+            };
             println!("new: {}\nact: {}", to_bin(new_value), to_bin(expected));
 
             let bit_diffs = to_bin(actual_sum.bitxor(expected));
@@ -191,6 +234,8 @@ fn fix_nodes(
 
             let Some(new_least_index) = new_least_index else {
                 // hurrah! We've totally fixed it. Return our new nodes!
+
+                println!("We've fixed it????");
                 return Some(new_nodes);
             };
 
@@ -213,8 +258,7 @@ fn fix_nodes(
         }
     }
 
-    // TODO
-    Some(vec![])
+    unreachable!();
 }
 
 fn collated_values(
@@ -222,14 +266,24 @@ fn collated_values(
     nodes: &Vec<Node>,
     address_map: &HashMap<String, usize>,
 ) -> Option<usize> {
-    address_map
+    let values = address_map
         .iter()
         .filter(|(k, _)| k.starts_with(prefix))
         .sorted_by(|(a, _), (b, _)| a.cmp(b))
         .map(|(_, &address)| nodes[address].derive_value(&nodes, 100))
-        .enumerate()
-        .map(|(ord, value)| value * 2_usize.pow(ord as u32))
-        .sum()
+        .collect::<Vec<Option<usize>>>();
+
+    if values.iter().any(|x| x.is_none()) {
+        None
+    } else {
+        Some(
+            values
+                .iter()
+                .enumerate()
+                .map(|(ord, value)| value.unwrap() * 2_usize.pow(ord as u32))
+                .sum(),
+        )
+    }
 }
 
 // fn find_best_switch(
