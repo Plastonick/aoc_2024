@@ -29,7 +29,7 @@ fn get_code_score(input: &str, d_pad_robots: usize) -> usize {
     for code in codes.iter() {
         let numeric_score = code_numeric_score(code);
 
-        let input_paths = paths_for(&code, &input_map);
+        let input_paths = paths_for(code, &input_map);
         let code_best_human_length = input_paths
             .iter()
             .map(|p| {
@@ -56,13 +56,13 @@ fn solve_min_path(from: char, to: char, routes: &KeypadRoutes, depth: usize) -> 
         best_length
     } else {
         next_paths
-            .into_iter()
+            .iter()
             .filter(|p| p.len() == best_length)
             .map(|p| {
                 std::iter::once(&'A')
                     .chain(p.iter())
                     .tuple_windows()
-                    .map(|(a, b)| solve_min_path(*a, *b, &routes, depth - 1))
+                    .map(|(a, b)| solve_min_path(*a, *b, routes, depth - 1))
                     .sum()
             })
             .min()
@@ -70,7 +70,7 @@ fn solve_min_path(from: char, to: char, routes: &KeypadRoutes, depth: usize) -> 
     }
 }
 
-fn paths_for(code: &Vec<char>, keypad_map: &KeypadRoutes) -> Vec<Vec<char>> {
+fn paths_for(code: &[char], keypad_map: &KeypadRoutes) -> Vec<Vec<char>> {
     let mut paths: Vec<Vec<char>> = vec![vec![]];
 
     std::iter::once(&'A')
@@ -80,7 +80,7 @@ fn paths_for(code: &Vec<char>, keypad_map: &KeypadRoutes) -> Vec<Vec<char>> {
             let possible_segments = keypad_map.get(&(from, to)).unwrap();
 
             paths = possible_segments
-                .into_iter()
+                .iter()
                 .flat_map(|segment| {
                     paths.clone().into_iter().map(move |p| {
                         p.clone()
@@ -107,11 +107,11 @@ fn generate_routes(keypad: &Keypad) -> KeypadRoutes {
                     let up_down_ch = if delta.x < 0 { '^' } else { 'v' };
                     let left_right_ch = if delta.y > 0 { '>' } else { '<' };
 
-                    let vert = vec![up_down_ch; delta.x.abs() as usize];
-                    let horz = vec![left_right_ch; delta.y.abs() as usize];
+                    let vert = vec![up_down_ch; delta.x.unsigned_abs()];
+                    let horz = vec![left_right_ch; delta.y.unsigned_abs()];
 
-                    let horz_first = vec![horz.clone(), vert.clone(), vec!['A']].concat();
-                    let vert_first = vec![vert, horz, vec!['A']].concat();
+                    let horz_first = [horz.clone(), vert.clone(), vec!['A']].concat();
+                    let vert_first = [vert, horz, vec!['A']].concat();
 
                     // avoid blank space?
                     let blank_pos = keypad.get(&' ').unwrap();
@@ -145,9 +145,9 @@ fn map_chars(chars: Vec<Vec<char>>) -> Keypad {
         .collect::<Keypad>()
 }
 
-fn code_numeric_score(code: &Vec<char>) -> usize {
+fn code_numeric_score(code: &[char]) -> usize {
     code.iter()
-        .filter(|ch| ('0'..='9').contains(ch))
+        .filter(|ch| ch.is_ascii_digit())
         .collect::<String>()
         .parse::<usize>()
         .unwrap()
