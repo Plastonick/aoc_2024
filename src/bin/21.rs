@@ -22,32 +22,25 @@ pub fn part_one(input: &str) -> Option<usize> {
         let numeric_score = code_numeric_score(code);
 
         let input_paths = paths_for(&vec![vec!['A'], code.clone()].concat(), &input_map);
-        let mut code_best_human_length = usize::MAX;
+        let code_best_human_length = input_paths
+            .iter()
+            .map(|p| {
+                std::iter::once(&'A')
+                    .chain(p.iter())
+                    .tuple_windows()
+                    .map(|(a, b)| solve_min_path(*a, *b, &directional_map, 1))
+                    .sum::<usize>()
+            })
+            .min()
+            .unwrap();
 
-        for input_path in input_paths {
-            let robot2_paths = paths_for(&vec![vec!['A'], input_path].concat(), &directional_map);
-
-            let best_length = robot2_paths.iter().map(|p| p.len()).min().unwrap();
-            let robot2_paths = robot2_paths
-                .into_iter()
-                .filter(|p| p.len() == best_length)
-                .collect::<Vec<Vec<char>>>();
-
-            for r2path in robot2_paths {
-                let human_paths = paths_for(&vec![vec!['A'], r2path].concat(), &directional_map);
-                let best_length = human_paths.iter().map(|p| p.len()).min().unwrap();
-
-                code_best_human_length = code_best_human_length.min(best_length);
-            }
-        }
-
-        println!(
-            "solving for code {} gives us score {} x {} = {}",
-            code.iter().collect::<String>(),
-            numeric_score,
-            code_best_human_length,
-            numeric_score * code_best_human_length
-        );
+        // println!(
+        //     "solving for code {} gives us score {} x {} = {}",
+        //     code.iter().collect::<String>(),
+        //     numeric_score,
+        //     code_best_human_length,
+        //     numeric_score * code_best_human_length
+        // );
 
         score += numeric_score * code_best_human_length;
     }
@@ -55,26 +48,61 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(score)
 }
 
-pub fn part_two(_input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let codes: Vec<Vec<char>> = input
+        .lines()
+        .map(|line| line.chars().collect::<Vec<char>>())
+        .collect();
+
+    let (input_map, directional_map) = build_route_maps();
+
+    let mut score = 0;
+    for code in codes.iter() {
+        let numeric_score = code_numeric_score(code);
+
+        let input_paths = paths_for(&vec![vec!['A'], code.clone()].concat(), &input_map);
+        let code_best_human_length = input_paths
+            .iter()
+            .map(|p| {
+                std::iter::once(&'A')
+                    .chain(p.iter())
+                    .tuple_windows()
+                    .map(|(a, b)| solve_min_path(*a, *b, &directional_map, 24))
+                    .sum::<usize>()
+            })
+            .min()
+            .unwrap();
+
+        score += numeric_score * code_best_human_length;
+    }
+
+    Some(score)
 }
 
-fn solve_min_path(code: Vec<char>, routes: &KeypadRoutes, depth: usize) -> usize {
-    let next_paths = paths_for(&vec![vec!['A'], code].concat(), &routes);
+#[cached(key = "String", convert = r#"{ format!("{}{}{}", from, to, depth) }"#)]
+fn solve_min_path(from: char, to: char, routes: &KeypadRoutes, depth: usize) -> usize {
+    let next_paths = routes.get(&(from, to)).unwrap();
     let best_length = next_paths.iter().map(|p| p.len()).min().unwrap();
 
     if depth == 0 {
-        return best_length;
+        best_length
+    } else {
+        next_paths
+            .into_iter()
+            .filter(|p| p.len() == best_length)
+            .map(|p| {
+                std::iter::once(&'A')
+                    .chain(p.iter())
+                    .tuple_windows()
+                    .map(|(a, b)| solve_min_path(*a, *b, &routes, depth - 1))
+                    .sum()
+            })
+            .min()
+            .unwrap()
     }
-
-    next_paths
-        .into_iter()
-        .filter(|p| p.len() == best_length)
-        .map(|p| solve_min_path(vec![vec!['A'], p].concat(), &routes, depth - 1))
-        .min()
-        .unwrap()
 }
 
+// TODO probably better to switch this out for piecewise a -> b caching
 #[cached(
     key = "String",
     convert = r#"{ code.iter().collect::<String>().clone() }"#
