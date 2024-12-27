@@ -10,45 +10,14 @@ type Keypad = HashMap<char, Point>;
 type KeypadRoutes = HashMap<(char, char), Vec<Vec<char>>>;
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let codes: Vec<Vec<char>> = input
-        .lines()
-        .map(|line| line.chars().collect::<Vec<char>>())
-        .collect();
-
-    let (input_map, directional_map) = build_route_maps();
-
-    let mut score = 0;
-    for code in codes.iter() {
-        let numeric_score = code_numeric_score(code);
-
-        let input_paths = paths_for(&vec![vec!['A'], code.clone()].concat(), &input_map);
-        let code_best_human_length = input_paths
-            .iter()
-            .map(|p| {
-                std::iter::once(&'A')
-                    .chain(p.iter())
-                    .tuple_windows()
-                    .map(|(a, b)| solve_min_path(*a, *b, &directional_map, 1))
-                    .sum::<usize>()
-            })
-            .min()
-            .unwrap();
-
-        // println!(
-        //     "solving for code {} gives us score {} x {} = {}",
-        //     code.iter().collect::<String>(),
-        //     numeric_score,
-        //     code_best_human_length,
-        //     numeric_score * code_best_human_length
-        // );
-
-        score += numeric_score * code_best_human_length;
-    }
-
-    Some(score)
+    Some(get_code_score(input, 2))
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
+    Some(get_code_score(input, 25))
+}
+
+fn get_code_score(input: &str, d_pad_robots: usize) -> usize {
     let codes: Vec<Vec<char>> = input
         .lines()
         .map(|line| line.chars().collect::<Vec<char>>())
@@ -60,14 +29,14 @@ pub fn part_two(input: &str) -> Option<usize> {
     for code in codes.iter() {
         let numeric_score = code_numeric_score(code);
 
-        let input_paths = paths_for(&vec![vec!['A'], code.clone()].concat(), &input_map);
+        let input_paths = paths_for(&code, &input_map);
         let code_best_human_length = input_paths
             .iter()
             .map(|p| {
                 std::iter::once(&'A')
                     .chain(p.iter())
                     .tuple_windows()
-                    .map(|(a, b)| solve_min_path(*a, *b, &directional_map, 24))
+                    .map(|(a, b)| solve_min_path(*a, *b, &directional_map, d_pad_robots - 1))
                     .sum::<usize>()
             })
             .min()
@@ -75,8 +44,7 @@ pub fn part_two(input: &str) -> Option<usize> {
 
         score += numeric_score * code_best_human_length;
     }
-
-    Some(score)
+    score
 }
 
 #[cached(key = "String", convert = r#"{ format!("{}{}{}", from, to, depth) }"#)]
@@ -102,31 +70,27 @@ fn solve_min_path(from: char, to: char, routes: &KeypadRoutes, depth: usize) -> 
     }
 }
 
-// TODO probably better to switch this out for piecewise a -> b caching
-#[cached(
-    key = "String",
-    convert = r#"{ code.iter().collect::<String>().clone() }"#
-)]
 fn paths_for(code: &Vec<char>, keypad_map: &KeypadRoutes) -> Vec<Vec<char>> {
     let mut paths: Vec<Vec<char>> = vec![vec![]];
 
-    code.iter().tuple_windows().for_each(|(&from, &to)| {
-        let possible_segments = keypad_map.get(&(from, to)).unwrap();
+    std::iter::once(&'A')
+        .chain(code.iter())
+        .tuple_windows()
+        .for_each(|(&from, &to)| {
+            let possible_segments = keypad_map.get(&(from, to)).unwrap();
 
-        paths = possible_segments
-            .into_iter()
-            .flat_map(|segment| {
-                paths.clone().into_iter().map(move |p| {
-                    let mut new_path = p.clone();
-                    for ch in segment {
-                        new_path.push(*ch);
-                    }
-
-                    new_path
+            paths = possible_segments
+                .into_iter()
+                .flat_map(|segment| {
+                    paths.clone().into_iter().map(move |p| {
+                        p.clone()
+                            .into_iter()
+                            .chain(segment.iter().copied())
+                            .collect()
+                    })
                 })
-            })
-            .collect::<Vec<Vec<char>>>();
-    });
+                .collect::<Vec<Vec<char>>>();
+        });
 
     paths
 }
@@ -220,6 +184,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(154115708116294));
     }
 }
