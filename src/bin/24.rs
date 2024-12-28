@@ -68,7 +68,7 @@ pub fn part_two(input: &str) -> Option<String> {
 }
 
 fn is_intermediate(address: &str) -> bool {
-    let last_char = *address.as_bytes().last().unwrap() as char;
+    let last_char = address.chars().next().unwrap();
 
     last_char.is_ascii_alphabetic()
 }
