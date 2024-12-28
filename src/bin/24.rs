@@ -67,10 +67,10 @@ pub fn part_two(input: &str) -> Option<String> {
     Some(invalid.iter().sorted().join(","))
 }
 
-fn any_start_with(strings: Vec<String>, chars: Vec<char>) -> bool {
-    strings
-        .iter()
-        .any(|str| chars.iter().any(|ch| str.starts_with(*ch)))
+fn is_intermediate(address: &str) -> bool {
+    let last_char = *address.as_bytes().last().unwrap() as char;
+
+    last_char.is_ascii_alphabetic()
 }
 
 fn find_wrong_nodes(nodes: &Vec<Node>, addresses: &Vec<String>) -> HashSet<String> {
@@ -92,17 +92,14 @@ fn find_wrong_nodes(nodes: &Vec<Node>, addresses: &Vec<String>) -> HashSet<Strin
     let mut invalid_addresses = HashSet::new();
 
     for (target, input1, input2, operation) in operations.iter() {
-        let is_xor = operation == &Operation::Xor;
-
-        if target.starts_with('z') && !is_xor && target != "z45" {
+        if target.starts_with('z') && operation != &Operation::Xor && target != "z45" {
             invalid_addresses.insert(target.clone());
         }
 
-        if is_xor
-            && !any_start_with(
-                vec![target.to_owned(), input1.to_owned(), input2.to_owned()],
-                vec!['x', 'y', 'z'],
-            )
+        if operation == &Operation::Xor
+            && is_intermediate(target)
+            && is_intermediate(input1)
+            && is_intermediate(input2)
         {
             invalid_addresses.insert(target.clone());
         }
