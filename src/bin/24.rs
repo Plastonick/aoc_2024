@@ -95,69 +95,94 @@ pub fn part_one(input: &str) -> Option<usize> {
     collated_values('z', &nodes, &address_map)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    let (mut nodes, addresses, address_map) = parse(input);
-    let x = collated_values('x', &nodes, &address_map).unwrap();
-    let y = collated_values('y', &nodes, &address_map).unwrap();
-    let expected_sum = x + y;
+fn find_swap(input: &str) -> Option<(String, String)> {
+    let (nodes, addresses, address_map) = parse(input);
+    let operation_to_address = build_operations_map(&nodes, &addresses);
 
-    let node_maps = nodes
-        .iter()
-        .filter(|n| addresses[n.address].starts_with('z'))
-        .sorted_by(|a, b| addresses[a.address].cmp(&addresses[b.address]))
-        .map(|n| {
-            format!(
-                "{} => {}",
-                addresses[n.address],
-                n.to_string(&nodes, &addresses)
-            )
-        })
-        .join("\n");
+    let mut check_digit = 0;
+    while let Some(&check_address) = address_map.get(&format!("z{:0>2}", check_digit)) {
+        let check_node = nodes[check_address].clone();
+        let actual_eq = check_node.to_string(&nodes, &addresses);
+        let expected_eq = digit_operation(check_digit);
 
-    println!("{}", node_maps);
+        if actual_eq == expected_eq {
+            println!("Digit {} is good", check_digit);
+        } else if let Some(wanted_op) = operation_to_address.get(&expected_eq) {
+            println!(
+                "Digit {} is not good... checking for the correct operation",
+                check_digit
+            );
 
-    panic!();
+            let wanted_op = operation_to_address
+                .get(&expected_eq)
+                .expect("hoped this would exist")
+                .clone();
 
-    // println!(
-    //     "Expected {} but got {} with bitwise diffs {}",
-    //     expected_sum,
-    //     actual_sum,
-    //     to_bin(expected_sum.bitxor(actual_sum))
-    // );
-
-    loop {
-        let improvement = fix_nodes(nodes, &address_map, &addresses, expected_sum);
-
-        if improvement.is_none() {
-            break;
+            return Some((wanted_op.clone(), addresses[check_address].clone()));
+        } else {
+            println!("Digit {} is not good... can't find correct op", check_digit);
         }
 
-        println!("found an improvement, looping");
-        nodes = improvement.unwrap();
+        check_digit += 1;
     }
 
-    // while let Some(new_nodes) = fix_nodes(nodes, address_map, addresses, expected_sum) {
-    //     nodes = new_nodes;
-    //     println!("fixing some more nodes!");
-    //
-    //     panic!("Done");
-    // }
+    None
+}
 
-    // previously: 110000110011110000000000000000111000000
-    // now: TODO
+pub fn part_two(input: &str) -> Option<u32> {
+    let mut input = input.to_string();
+    let mut swaps = vec![];
+    while let Some(swap) = find_swap(&input) {
+        println!("Swapping {} and {}", swap.0, swap.1);
 
-    // let bin_diff = to_bin(expected_sum.bitxor(actual_sum));
-    //
-    // let i = *address_map.get("kpb").unwrap();
-    // let chain = nodes[i].clone().get_chain();
-    // let chain_str = chain
-    //     .iter()
-    //     .map(|x| addresses[x.address].clone())
-    //     .join(", ");
-    //
-    // dbg!(addresses[i].clone(), chain_str);
+        let swap_0_token = format!("-> {}", swap.0);
+        let swap_1_token = format!("-> {}", swap.1);
+
+        input = input.replace(swap_0_token.as_str(), "0_placeholder");
+        input = input.replace(swap_1_token.as_str(), swap_0_token.as_str());
+        input = input.replace("0_placeholder", swap_1_token.as_str());
+
+        swaps.push(swap);
+    }
+
+    dbg!(&swaps);
 
     None
+}
+
+fn build_operations_map(nodes: &Vec<Node>, addresses: &Vec<String>) -> HashMap<String, String> {
+    nodes
+        .iter()
+        .map(|n| (n.to_string(nodes, addresses), addresses[n.address].clone()))
+        .collect::<HashMap<String, String>>()
+}
+
+fn digit_operation(digit: usize) -> String {
+    if digit > 0 {
+        format!(
+            "((x{:0>2} XOR y{:0>2}) XOR {})",
+            digit,
+            digit,
+            digit_overflow(digit - 1)
+        )
+    } else {
+        format!("(x{:0>2} XOR y{:0>2})", digit, digit)
+    }
+}
+
+fn digit_overflow(digit: usize) -> String {
+    if digit > 0 {
+        format!(
+            "((x{:0>2} AND y{:0>2}) OR ((x{:0>2} XOR y{:0>2}) AND {}))",
+            digit,
+            digit,
+            digit,
+            digit,
+            digit_overflow(digit - 1)
+        )
+    } else {
+        format!("(x{:0>2} AND y{:0>2})", digit, digit)
+    }
 }
 
 fn fix_nodes(
@@ -285,81 +310,6 @@ fn collated_values(
         )
     }
 }
-
-// fn find_best_switch(
-//     values: &HashMap<String, usize>,
-//     processes: &Vec<Process>,
-//     expected: usize,
-// ) -> Option<(usize, usize, usize)> {
-//     let mut best: Option<(usize, usize, usize)> = None;
-//
-//     for (p1, process1) in processes.iter().enumerate() {
-//         for (p2, process2) in processes.iter().enumerate() {
-//             if p1 == p2 {
-//                 continue;
-//             }
-//
-//             let mut new_processes = processes.clone();
-//             let process1 = Process {
-//                 input1: process1.input1.to_owned(),
-//                 input2: process1.input2.to_owned(),
-//                 operation: process1.operation.to_owned(),
-//                 target: process2.target.to_owned(),
-//             };
-//             let process2 = Process {
-//                 input1: process2.input1.to_owned(),
-//                 input2: process2.input2.to_owned(),
-//                 operation: process2.operation.to_owned(),
-//                 target: process1.target.to_owned(),
-//             };
-//
-//             new_processes[p1] = process1;
-//             new_processes[p2] = process2;
-//
-//             let values = run_program(values.clone(), new_processes);
-//
-//             let new_z = calc_value(&values, 'z');
-//             let new_diff = expected.abs_diff(new_z);
-//
-//             if new_diff < best.map_or(usize::MAX, |x| x.2) {
-//                 best = Some((p1.min(p2), p1.max(p2), new_diff));
-//             }
-//         }
-//     }
-//
-//     best
-// }
-
-// fn composed_values(
-//     values: HashMap<String, usize>,
-//     processes: Vec<Vec<String>>,
-// ) -> HashMap<String, String> {
-//     let mut processes = processes;
-//     let mut composed_values = values
-//         .keys()
-//         .map(|k| (k.to_owned(), k.to_owned()))
-//         .collect::<HashMap<String, String>>();
-//
-//     while let Some(process) = processes.pop() {
-//         let Some(arg1) = composed_values.get(&process[0]) else {
-//             processes.insert(0, process);
-//
-//             continue;
-//         };
-//         let Some(arg2) = composed_values.get(&process[2]) else {
-//             processes.insert(0, process);
-//
-//             continue;
-//         };
-//
-//         let operation = &process[1];
-//         let target = &process[4];
-//
-//         composed_values.insert(target.to_string(), format!("({arg1} {operation} {arg2})"));
-//     }
-//
-//     composed_values
-// }
 
 fn to_bin(int: usize) -> String {
     let mut binary = String::new();
