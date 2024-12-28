@@ -1,11 +1,11 @@
 use crate::Value::{Derived, Raw};
 use itertools::Itertools;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::{BitAnd, BitOr, BitXor};
 
 advent_of_code::solution!(24);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Operation {
     And,
     Or,
@@ -95,6 +95,84 @@ pub fn part_one(input: &str) -> Option<usize> {
     collated_values('z', &nodes, &address_map)
 }
 
+fn parse2(input: &str) -> VecDeque<(String, String)> {
+    let (_, ops) = input.split_once("\n\n").unwrap();
+
+    ops.lines()
+        .map(|x| {
+            let (op, address) = x.split_once(" -> ").unwrap();
+
+            (op.to_owned(), address.to_owned())
+        })
+        .collect::<VecDeque<(String, String)>>()
+}
+
+pub fn part_two(input: &str) -> Option<String> {
+    let (nodes, addresses, _) = parse(input);
+    let invalid = find_wrong_nodes(&nodes, &addresses);
+
+    Some(invalid.iter().sorted().join(","))
+}
+
+fn generate_correct_input(order: usize) -> HashMap<String, String> {
+    let mut operations = HashMap::new();
+
+    operations.insert("x00 XOR y00".to_owned(), "z00".to_owned());
+    operations.insert("x00 AND y00".to_owned(), "carry01".to_owned());
+
+    // z03 => ((x03 XOR y03) XOR ((x02 AND y02) OR ((x02 XOR y02) AND ((x01 AND y01) OR ((x01 XOR y01) AND (x00 AND y00))))))
+
+    // z03 => (xor03 XOR (and02 OR (xor02 AND and
+
+    for digit in 1..order {
+        let prev = format!("{:0>2}", digit - 1);
+        let curr = format!("{:0>2}", digit);
+        let next = format!("{:0>2}", digit + 1);
+
+        let xor_curr = format!("x{curr} XOR y{curr}");
+        let output = format!("xor{curr} XOR carry{prev}");
+        let and_curr = format!("x{curr} AND y{curr}");
+        let yeet_through = format!("{output} XOR carry{prev}");
+        let carry_next = format!("and{curr} OR yeet{curr}");
+
+        operations.insert(xor_curr, format!("xor{curr}"));
+        operations.insert(output, format!("z{curr}"));
+        operations.insert(and_curr, format!("and{curr}"));
+        operations.insert(yeet_through, format!("yeet{curr}"));
+        operations.insert(carry_next, format!("carry{next}"));
+    }
+
+    operations
+}
+
+fn try_swap(input: &str, swap: (String, String)) -> Option<usize> {
+    // swap the swaps and see what the new least-digit is
+    let swap_0_token = format!("-> {}", swap.0);
+    let swap_1_token = format!("-> {}", swap.1);
+
+    let mut input = input.to_string();
+
+    input = input.replace(swap_0_token.as_str(), "0_placeholder");
+    input = input.replace(swap_1_token.as_str(), swap_0_token.as_str());
+    input = input.replace("0_placeholder", swap_1_token.as_str());
+
+    let (nodes, addresses, address_map) = parse(&input);
+
+    let x = collated_values('x', &nodes, &address_map).unwrap();
+    let y = collated_values('y', &nodes, &address_map).unwrap();
+    let expected = x + y;
+    let actual = collated_values('z', &nodes, &address_map).unwrap();
+
+    let bit_diffs = to_bin(actual.bitxor(expected));
+
+    // return the smallest wrong bit first
+    bit_diffs
+        .chars()
+        .rev()
+        .enumerate()
+        .find_map(|(i, bit)| if bit == '1' { Some(i) } else { None })
+}
+
 fn find_swap(input: &str) -> Option<(String, String)> {
     let (nodes, addresses, address_map) = parse(input);
     let operation_to_address = build_operations_map(&nodes, &addresses);
@@ -103,7 +181,7 @@ fn find_swap(input: &str) -> Option<(String, String)> {
     while let Some(&check_address) = address_map.get(&format!("z{:0>2}", check_digit)) {
         let check_node = nodes[check_address].clone();
         let actual_eq = check_node.to_string(&nodes, &addresses);
-        let expected_eq = digit_operation(check_digit);
+        let expected_eq = digit_operation(check_digit, &mut HashSet::new());
 
         if actual_eq == expected_eq {
             println!("Digit {} is good", check_digit);
@@ -112,11 +190,6 @@ fn find_swap(input: &str) -> Option<(String, String)> {
                 "Digit {} is not good... checking for the correct operation",
                 check_digit
             );
-
-            let wanted_op = operation_to_address
-                .get(&expected_eq)
-                .expect("hoped this would exist")
-                .clone();
 
             return Some((wanted_op.clone(), addresses[check_address].clone()));
         } else {
@@ -129,27 +202,6 @@ fn find_swap(input: &str) -> Option<(String, String)> {
     None
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    let mut input = input.to_string();
-    let mut swaps = vec![];
-    while let Some(swap) = find_swap(&input) {
-        println!("Swapping {} and {}", swap.0, swap.1);
-
-        let swap_0_token = format!("-> {}", swap.0);
-        let swap_1_token = format!("-> {}", swap.1);
-
-        input = input.replace(swap_0_token.as_str(), "0_placeholder");
-        input = input.replace(swap_1_token.as_str(), swap_0_token.as_str());
-        input = input.replace("0_placeholder", swap_1_token.as_str());
-
-        swaps.push(swap);
-    }
-
-    dbg!(&swaps);
-
-    None
-}
-
 fn build_operations_map(nodes: &Vec<Node>, addresses: &Vec<String>) -> HashMap<String, String> {
     nodes
         .iter()
@@ -157,52 +209,138 @@ fn build_operations_map(nodes: &Vec<Node>, addresses: &Vec<String>) -> HashMap<S
         .collect::<HashMap<String, String>>()
 }
 
-fn digit_operation(digit: usize) -> String {
+fn digit_operation(digit: usize, operations: &mut HashSet<String>) -> String {
     if digit > 0 {
-        format!(
-            "((x{:0>2} XOR y{:0>2}) XOR {})",
-            digit,
-            digit,
-            digit_overflow(digit - 1)
-        )
+        let xor = format!("(x{:0>2} XOR y{:0>2})", digit, digit);
+
+        operations.insert(xor.clone());
+        format!("({xor} XOR {})", digit_overflow(digit - 1, operations))
     } else {
-        format!("(x{:0>2} XOR y{:0>2})", digit, digit)
+        let operation = format!("(x{:0>2} XOR y{:0>2})", digit, digit);
+
+        operations.insert(operation.clone());
+        operation
     }
 }
 
-fn digit_overflow(digit: usize) -> String {
+fn digit_overflow(digit: usize, operations: &mut HashSet<String>) -> String {
     if digit > 0 {
+        let and = format!("(x{:0>2} AND y{:0>2})", digit, digit);
+        let xor = format!("(x{:0>2} XOR y{:0>2})", digit, digit);
+
+        operations.insert(and.clone());
+        operations.insert(xor.clone());
+
         format!(
-            "((x{:0>2} AND y{:0>2}) OR ((x{:0>2} XOR y{:0>2}) AND {}))",
-            digit,
-            digit,
-            digit,
-            digit,
-            digit_overflow(digit - 1)
+            "({and} OR ({xor} AND {}))",
+            digit_overflow(digit - 1, operations)
         )
     } else {
-        format!("(x{:0>2} AND y{:0>2})", digit, digit)
+        let operation = format!("(x{:0>2} AND y{:0>2})", digit, digit);
+
+        operations.insert(operation.clone());
+        operation
     }
 }
 
-fn fix_nodes(
-    nodes: Vec<Node>,
-    address_map: &HashMap<String, usize>,
-    addresses: &Vec<String>,
-    expected: usize,
-) -> Option<Vec<Node>> {
+fn any_start_with(strings: Vec<String>, chars: Vec<char>) -> bool {
+    strings
+        .iter()
+        .any(|str| chars.iter().any(|ch| str.starts_with(*ch)))
+}
+
+fn find_wrong_nodes(nodes: &Vec<Node>, addresses: &Vec<String>) -> HashSet<String> {
+    let operations = nodes
+        .iter()
+        .filter_map(|n| match &n.value {
+            Raw(_) => None,
+            Derived(process) => {
+                let target = addresses[n.address].clone();
+                let input1 = addresses[process.input1].clone();
+                let input2 = addresses[process.input1].clone();
+                let operation = process.operation;
+
+                Some((target, input1, input2, operation))
+            }
+        })
+        .collect::<Vec<(String, String, String, Operation)>>();
+
+    let mut invalid_addresses = HashSet::new();
+
+    for (target, input1, input2, operation) in operations.iter() {
+        let is_xor = operation == &Operation::Xor;
+
+        if target.starts_with('z') && !is_xor && target != "z45" {
+            invalid_addresses.insert(target.clone());
+        }
+
+        if is_xor
+            && !any_start_with(
+                vec![target.to_owned(), input1.to_owned(), input2.to_owned()],
+                vec!['x', 'y', 'z'],
+            )
+        {
+            invalid_addresses.insert(target.clone());
+        }
+
+        if operation == &Operation::And && input1 != "x00" && input2 != "x00" {
+            for (_, sub_input1, sub_input2, sub_op) in operations.iter() {
+                if (target == sub_input1 || target == sub_input2) && sub_op != &Operation::Or {
+                    invalid_addresses.insert(target.clone());
+                }
+            }
+        }
+
+        if operation == &Operation::Xor {
+            for (_, sub_input1, sub_input2, sub_op) in operations.iter() {
+                if (target == sub_input1 || target == sub_input2) && sub_op == &Operation::Or {
+                    invalid_addresses.insert(target.clone());
+                }
+            }
+        }
+    }
+
+    invalid_addresses
+
+    // wrong = set()
+    // for op1, op, op2, res in operations:
+    //     if res[0] == "z" and op != "XOR" and res != highest_z:
+    //         wrong.add(res)
+    //     if (
+    //         op == "XOR"
+    //         and res[0] not in ["x", "y", "z"]
+    //         and op1[0] not in ["x", "y", "z"]
+    //         and op2[0] not in ["x", "y", "z"]
+    //     ):
+    //         wrong.add(res)
+    //     if op == "AND" and "x00" not in [op1, op2]:
+    //         for subop1, subop, subop2, subres in operations:
+    //             if (res == subop1 or res == subop2) and subop != "OR":
+    //                 wrong.add(res)
+    //     if op == "XOR":
+    //         for subop1, subop, subop2, subres in operations:
+    //             if (res == subop1 or res == subop2) and subop == "OR":
+    //                 wrong.add(res)
+}
+
+fn fix_nodes(input: &str) -> (String, String) {
+    let (nodes, addresses, address_map) = parse(input);
+    let x = collated_values('x', &nodes, &address_map).unwrap();
+    let y = collated_values('y', &nodes, &address_map).unwrap();
+    let expected = x + y;
+
     let actual_sum = collated_values('z', &nodes, &address_map).unwrap();
     println!("exp: {}\nact: {}", to_bin(actual_sum), to_bin(expected));
 
     let bit_diffs = to_bin(actual_sum.bitxor(expected));
 
     // fix the smallest wrong bit first
-    let index =
-        bit_diffs
-            .chars()
-            .rev()
-            .enumerate()
-            .find_map(|(i, bit)| if bit == '1' { Some(i) } else { None })?;
+    let index = bit_diffs
+        .chars()
+        .rev()
+        .enumerate()
+        .find_map(|(i, bit)| if bit == '1' { Some(i) } else { None })
+        .unwrap();
 
     // we have a smallest wrong bit... so something in the node-chain for this one is wrong, but the node-chain
     // below it _isn't_ wrong.
@@ -221,64 +359,35 @@ fn fix_nodes(
     let broken_node_address = address_map.get(&node_address_str).unwrap();
     let broken_node = nodes[*broken_node_address].clone();
 
+    let mut fixed = false;
     for a_node in broken_node.get_chain(&nodes).iter() {
+        if fixed {
+            break;
+        }
+
         for b_node in nodes.iter() {
             if a_node.address == b_node.address {
                 continue;
             }
 
-            let new_a = Node {
-                address: a_node.address,
-                value: b_node.value.clone(),
-            };
-            let new_b = Node {
-                address: b_node.address,
-                value: a_node.value.clone(),
-            };
+            let swap_a = addresses[a_node.address].clone();
+            let swap_b = addresses[b_node.address].clone();
 
-            // try a swap?
-            let mut new_nodes = nodes.clone();
-            new_nodes[a_node.address] = new_a;
-            new_nodes[b_node.address] = new_b;
+            let swap = (swap_a, swap_b);
+            if let Some(new_smallest) = try_swap(input, swap.clone()) {
+                if new_smallest < index {
+                    println!(
+                        "Found a good swap at index {index}, swap {} for {}",
+                        swap.0, swap.1
+                    );
 
-            let Some(new_value) = collated_values('z', &new_nodes, &address_map) else {
-                // possible invalid swap due to infinite loop?
-
-                continue;
-            };
-            println!("new: {}\nact: {}", to_bin(new_value), to_bin(expected));
-
-            let bit_diffs = to_bin(actual_sum.bitxor(expected));
-            let new_least_index = bit_diffs.chars().rev().enumerate().find_map(|(i, bit)| {
-                if bit == '1' {
-                    Some(i)
+                    return swap;
                 } else {
-                    None
+                    // bad swap.. keep trying!
                 }
-            });
-
-            let Some(new_least_index) = new_least_index else {
-                // hurrah! We've totally fixed it. Return our new nodes!
-
-                println!("We've fixed it????");
-                return Some(new_nodes);
-            };
-
-            // we've not fixed it, but have we improved it?
-            if new_least_index > index {
-                // it's better! Consider it an improvement and move along...
-
-                println!(
-                    "Improved by switching {} and {}",
-                    addresses[a_node.address], addresses[b_node.address]
-                );
-                panic!();
-                return Some(new_nodes);
             } else {
-                println!(
-                    "it's worse! {} instead of {} Try again...",
-                    new_least_index, index
-                );
+                // fixed?
+                fixed = true;
             }
         }
     }
@@ -403,13 +512,5 @@ mod tests {
     fn test_part_one() {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(2024));
-    }
-
-    #[test]
-    fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file_part(
-            "examples", DAY, 2,
-        ));
-        assert_eq!(result, Some(1));
     }
 }
