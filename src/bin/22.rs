@@ -58,16 +58,12 @@ pub fn part_two(input: &str) -> Option<isize> {
 fn build_4_sequence_value_map(sequence: &Vec<(isize, isize)>) -> HashMap<isize, isize> {
     let mut sequence_values = HashMap::new();
 
-    for window in sequence.windows(4) {
+    for window in sequence.windows(4).rev() {
         let key = window
             .iter()
             .enumerate()
             .map(|(order, el)| el.1 * 20_isize.pow(order as u32))
             .sum::<isize>();
-
-        if sequence_values.contains_key(&key) {
-            continue;
-        }
 
         sequence_values.insert(key, window[3].0);
     }
