@@ -34,41 +34,30 @@ pub fn part_two(input: &str) -> Option<isize> {
         })
         .collect::<Vec<Vec<(isize, isize)>>>();
 
-    // found the mappings of 4-sequence => value for each large sequence
-    let sequence_value_maps = sequences
-        .iter()
-        .map(build_4_sequence_value_map)
-        .collect::<Vec<HashMap<isize, isize>>>();
-
-    // now iterate over all the possible unique 4-sequences and calculate scores
-    sequence_value_maps
-        .iter()
-        .flat_map(|x| x.keys())
-        .map(|x| x.to_owned())
-        .unique()
-        .map(|seq| {
-            sequence_value_maps
-                .iter()
-                .filter_map(|value_map| value_map.get(&seq))
-                .sum::<isize>()
-        })
-        .max()
+    get_best_4_sequence_value(&sequences)
 }
 
-fn build_4_sequence_value_map(sequence: &Vec<(isize, isize)>) -> HashMap<isize, isize> {
+fn get_best_4_sequence_value(sequences: &Vec<Vec<(isize, isize)>>) -> Option<isize> {
     let mut sequence_values = HashMap::new();
 
-    for window in sequence.windows(4).rev() {
-        let key = window
-            .iter()
-            .enumerate()
-            .map(|(order, el)| el.1 * 20_isize.pow(order as u32))
-            .sum::<isize>();
+    for sequence in sequences {
+        let mut seen = HashSet::new();
 
-        sequence_values.insert(key, window[3].0);
+        for window in sequence.windows(4) {
+            let key = window
+                .iter()
+                .enumerate()
+                .map(|(order, el)| el.1 * 20_isize.pow(order as u32))
+                .sum::<isize>();
+
+            if !seen.contains(&key) {
+                seen.insert(key);
+                *sequence_values.entry(key).or_insert(0) += window[3].0;
+            }
+        }
     }
 
-    sequence_values
+    sequence_values.values().max().map(|x| *x)
 }
 
 fn process(number: isize, times: isize) -> isize {
