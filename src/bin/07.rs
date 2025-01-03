@@ -19,7 +19,7 @@ fn find_test_sum(input: &str, operations: &Vec<Operation>) -> Option<usize> {
     let valid = equations
         .into_iter()
         .filter_map(|(test, numbers)| {
-            if is_valid(test, &numbers, operations) {
+            if is_valid(test, None, &numbers, operations) {
                 Some(test)
             } else {
                 None
@@ -37,23 +37,39 @@ enum Operation {
     Concat,
 }
 
-fn is_valid(test: usize, numbers: &Vec<usize>, operations: &Vec<Operation>) -> bool {
-    if numbers.len() == 1 {
-        return numbers[0] == test;
+trait Operable {
+    fn operate(&self, a: usize, b: usize) -> usize;
+}
+
+impl Operable for Operation {
+    fn operate(&self, a: usize, b: usize) -> usize {
+        match self {
+            Operation::Add => a + b,
+            Operation::Mul => a * b,
+            Operation::Concat => concat(a, b),
+        }
+    }
+}
+
+fn is_valid(
+    test: usize,
+    carry: Option<usize>,
+    numbers: &[usize],
+    operations: &[Operation],
+) -> bool {
+    if numbers.is_empty() {
+        return carry == Some(test);
     }
 
     for operation in operations {
-        let new_first = match operation {
-            Operation::Add => numbers[0] + numbers[1],
-            Operation::Mul => numbers[0] * numbers[1],
-            Operation::Concat => concat(numbers[0], numbers[1]),
+        let (arg1, arg2, skip) = match carry {
+            None => (numbers[0], numbers[1], 2),
+            Some(arg1) => (arg1, numbers[0], 1),
         };
-        let mut new_numbers = vec![new_first];
-        for number in numbers.iter().skip(2) {
-            new_numbers.push(*number)
-        }
 
-        if is_valid(test, &new_numbers, operations) {
+        let carry = Some(operation.operate(arg1, arg2));
+
+        if is_valid(test, carry, &numbers[skip..], operations) {
             return true;
         }
     }
@@ -62,7 +78,7 @@ fn is_valid(test: usize, numbers: &Vec<usize>, operations: &Vec<Operation>) -> b
 }
 
 fn concat(a: usize, b: usize) -> usize {
-    a * 10_i32.pow(b.ilog10() + 1) as usize + b
+    a * 10_usize.pow(b.ilog10() + 1) + b
 }
 
 fn parse(input: &str) -> Vec<(usize, Vec<usize>)> {
