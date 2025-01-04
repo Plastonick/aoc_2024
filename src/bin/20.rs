@@ -89,7 +89,6 @@ fn num_cheats(
 
             within_min_distance && actual_saving
         })
-        .map(|(n, _)| format!("{}, {} to {}, {}", point.x, point.y, n.x, n.y))
         .count()
 }
 
