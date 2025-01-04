@@ -30,9 +30,8 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    // TODO it's probably nicer to store the "empty" sequence positions + lengths, to facilitate much faster scanning!
-
     let mut output = create_drive(input);
+    let mut free_spaces = build_free_spaces(&output);
     let mut start_file_index = output.len() - 1;
 
     loop {
@@ -48,12 +47,16 @@ pub fn part_two(input: &str) -> Option<usize> {
 
         // now we need to find a space that will fit it!
         let length = (end_file_index - start_file_index) + 1;
-        if let Some(left_index) = empty_space(&output, start_file_index, length) {
+        if let Some(free_space_index) = empty_space(&free_spaces, start_file_index, length) {
+            let (left_index, _) = free_spaces[free_space_index];
+
             for i in 0..length {
-                // juggle the values around
                 output[left_index + i] = output[start_file_index + i];
                 output[start_file_index + i] = -1;
             }
+
+            free_spaces[free_space_index].0 += length;
+            free_spaces[free_space_index].1 -= length;
         }
 
         // move our scanner back a bit more
@@ -63,7 +66,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     Some(calculate_checksum(&output))
 }
 
-fn find_next_file(output: &Vec<i32>, from: usize) -> Option<(usize, usize)> {
+fn find_next_file(output: &[i32], from: usize) -> Option<(usize, usize)> {
     let mut right_index = from;
 
     // find the next not -1 entry
@@ -109,7 +112,30 @@ fn create_drive(input: &str) -> Vec<i32> {
             index += 1;
         }
     }
+
     output
+}
+
+fn build_free_spaces(drive: &[i32]) -> Vec<(usize, usize)> {
+    let mut spaces = vec![];
+    let mut free_length = None;
+
+    for (i, v) in drive.iter().enumerate() {
+        if v == &-1 {
+            free_length = Some(free_length.unwrap_or(0) + 1);
+        } else {
+            match free_length {
+                None => {}
+                Some(length) => spaces.push((i - length, length)),
+            };
+
+            free_length = None
+        }
+    }
+
+    // if the last area in a drive is empty, there's no point in including it, since nothing could move there anyway
+
+    spaces
 }
 
 fn calculate_checksum(output: &Vec<i32>) -> usize {
@@ -126,24 +152,18 @@ fn calculate_checksum(output: &Vec<i32>) -> usize {
         .sum()
 }
 
-fn empty_space(output: &Vec<i32>, up_to: usize, desired_length: usize) -> Option<usize> {
-    let mut start_of_block = None;
-    for i in 0..up_to {
-        let value = output[i];
-
-        if value != -1 {
-            start_of_block = None;
-
-            continue;
+fn empty_space(
+    free_spaces: &Vec<(usize, usize)>,
+    up_to: usize,
+    desired_length: usize,
+) -> Option<usize> {
+    for (index, (starts_at, length)) in free_spaces.iter().enumerate() {
+        if starts_at > &up_to {
+            return None;
         }
 
-        if start_of_block.is_none() {
-            start_of_block = Some(i)
-        }
-
-        let start = start_of_block.expect("Expected some start!");
-        if (i - start) + 1 >= desired_length {
-            return start_of_block;
+        if length >= &desired_length {
+            return Some(index);
         }
     }
 
