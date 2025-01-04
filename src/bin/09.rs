@@ -157,17 +157,23 @@ fn empty_space(
     up_to: usize,
     desired_length: usize,
 ) -> Option<usize> {
-    for (index, (starts_at, length)) in free_spaces.iter().enumerate() {
-        if starts_at > &up_to {
-            return None;
-        }
-
-        if length >= &desired_length {
-            return Some(index);
-        }
-    }
-
-    None
+    free_spaces
+        .iter()
+        .map_while(|(starts_at, length)| {
+            if starts_at < &up_to {
+                Some(length)
+            } else {
+                None
+            }
+        })
+        .enumerate()
+        .find_map(|(index, l)| {
+            if l >= &desired_length {
+                Some(index)
+            } else {
+                None
+            }
+        })
 }
 
 #[cfg(test)]
