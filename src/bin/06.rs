@@ -1,4 +1,5 @@
 use euclid::{point2, vec2, Point2D, Vector2D};
+use itertools::Itertools;
 use std::collections::HashSet;
 use std::ops::Add;
 
@@ -7,32 +8,59 @@ advent_of_code::solution!(6);
 type Point = Point2D<isize, isize>;
 type Direction = Vector2D<isize, isize>;
 
+#[derive(Clone, Hash, Eq, PartialEq)]
+struct Guard {
+    position: Point,
+    direction: Direction,
+}
+
+impl Guard {
+    fn move_one(&self) -> Guard {
+        Guard {
+            position: self.position.add(self.direction),
+            direction: self.direction,
+        }
+    }
+
+    fn turn_90cw(&self) -> Guard {
+        Guard {
+            position: self.position,
+            direction: vec2(self.direction.y, -self.direction.x),
+        }
+    }
+}
+
 pub fn part_one(input: &str) -> Option<usize> {
     let (guard, bounds, walls) = parse(input);
-
-    let (states_visited, _) = move_guard(&guard, &bounds, &walls, &None);
+    let (states_visited, _, _) = move_guard(&guard, &bounds, &walls, &None);
 
     Some(
         states_visited
             .into_iter()
-            .map(|(a, _)| a)
-            .collect::<HashSet<Point>>()
-            .len(),
+            .map(|a| a.position)
+            .unique()
+            .count(),
     )
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
     let (guard, bounds, walls) = parse(input);
-
-    let (states_visited, _) = move_guard(&guard, &bounds, &walls, &None);
+    let (_, path, _) = move_guard(&guard, &bounds, &walls, &None);
 
     Some(
-        states_visited
-            .into_iter()
-            .map(|(a, _)| a)
-            .collect::<HashSet<Point>>()
-            .iter()
-            .filter(|&&pos| move_guard(&guard, &bounds, &walls, &Some(pos)).1)
+        path.into_iter()
+            .unique_by(|a| a.position)
+            .tuple_windows()
+            .filter_map(|(new_guard, obstr)| {
+                let (_, _, does_loop) =
+                    move_guard(&new_guard, &bounds, &walls, &Some(obstr.position));
+
+                if does_loop {
+                    Some(obstr.position)
+                } else {
+                    None
+                }
+            })
             .count(),
     )
 }
@@ -42,38 +70,38 @@ fn within_bounds(guard: &Point, bounds: &Point) -> bool {
 }
 
 fn move_guard(
-    initial: &Point,
+    guard: &Guard,
     bounds: &Point,
     walls: &HashSet<Point>,
     obstruction: &Option<Point>,
-) -> (HashSet<(Point, Direction)>, bool) {
-    let mut moving_guard = *initial;
-    let mut direction = vec2(-1, 0);
-    let mut states_seen: HashSet<(Point, Direction)> = HashSet::new();
+) -> (HashSet<Guard>, Vec<Guard>, bool) {
+    let mut guard = guard.to_owned();
+    let mut states_seen: HashSet<Guard> = HashSet::new();
+    let mut path = vec![guard.to_owned()];
 
-    while within_bounds(&moving_guard, bounds) {
-        let state = (moving_guard, direction);
-        if states_seen.contains(&state) {
-            return (states_seen, true);
+    while within_bounds(&guard.position, bounds) {
+        if states_seen.contains(&guard) {
+            return (states_seen, path, true);
         }
 
-        states_seen.insert(state);
+        path.push(guard.to_owned());
+        states_seen.insert(guard.to_owned());
 
-        let next = moving_guard.add(direction);
-        if walls.contains(&next) || obstruction.eq(&Some(next)) {
-            // we've hit a wall, turn 90º clockwise
-            direction = vec2(direction.y, -direction.x)
+        let next = guard.move_one();
+        guard = if walls.contains(&next.position) || obstruction.eq(&Some(next.position)) {
+            // we would hit a wall, instead let's turn 90º clockwise
+            guard.turn_90cw()
         } else {
             // no wall, move!
-            moving_guard = next;
+            next
         }
     }
 
-    (states_seen, false)
+    (states_seen, path, false)
 }
 
-fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
-    let mut guard: Option<Point> = None;
+fn parse(input: &str) -> (Guard, Point, HashSet<Point>) {
+    let mut guard_start: Option<Point> = None;
     let mut bounds: Point = point2(0, 0);
 
     let walls = input
@@ -89,7 +117,7 @@ fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
                         Some(point2(r as isize, c as isize))
                     } else {
                         if ch == '^' {
-                            guard = Some(point2(r as isize, c as isize))
+                            guard_start = Some(point2(r as isize, c as isize))
                         }
 
                         None
@@ -99,7 +127,12 @@ fn parse(input: &str) -> (Point, Point, HashSet<Point>) {
         })
         .collect::<HashSet<Point>>();
 
-    (guard.unwrap(), bounds, walls)
+    let guard = Guard {
+        position: guard_start.unwrap(),
+        direction: vec2(-1, 0),
+    };
+
+    (guard, bounds, walls)
 }
 
 #[cfg(test)]
