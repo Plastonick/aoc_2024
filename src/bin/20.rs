@@ -74,7 +74,7 @@ fn num_cheats(
     point: &Point,
     time_map: &HashMap<Point, usize>,
     save_minimum: usize,
-    max_distance: usize,
+    max_distance: isize,
 ) -> usize {
     let point_cost = time_map[point];
 
@@ -82,7 +82,7 @@ fn num_cheats(
         .iter()
         .filter(|(n, cost)| {
             let delta = n.sub(*point).abs();
-            let within_min_distance = delta.x + delta.y <= max_distance as isize;
+            let within_min_distance = delta.x + delta.y <= max_distance;
 
             let cheat_cost = point_cost + (delta.x + delta.y) as usize;
             let actual_saving = cheat_cost + save_minimum <= **cost;
