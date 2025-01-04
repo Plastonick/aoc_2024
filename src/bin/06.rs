@@ -32,28 +32,21 @@ impl Guard {
 
 pub fn part_one(input: &str) -> Option<usize> {
     let (guard, bounds, walls) = parse(input);
-    let (states_visited, _, _) = move_guard(&guard, &bounds, &walls, &None);
+    let (path, _) = move_guard(&guard, &bounds, &walls, &None);
 
-    Some(
-        states_visited
-            .into_iter()
-            .map(|a| a.position)
-            .unique()
-            .count(),
-    )
+    Some(path.into_iter().map(|a| a.position).unique().count())
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
     let (guard, bounds, walls) = parse(input);
-    let (_, path, _) = move_guard(&guard, &bounds, &walls, &None);
+    let (path, _) = move_guard(&guard, &bounds, &walls, &None);
 
     Some(
         path.into_iter()
             .unique_by(|a| a.position)
             .tuple_windows()
             .filter_map(|(new_guard, obstr)| {
-                let (_, _, does_loop) =
-                    move_guard(&new_guard, &bounds, &walls, &Some(obstr.position));
+                let (_, does_loop) = move_guard(&new_guard, &bounds, &walls, &Some(obstr.position));
 
                 if does_loop {
                     Some(obstr.position)
@@ -74,22 +67,22 @@ fn move_guard(
     bounds: &Point,
     walls: &HashSet<Point>,
     obstruction: &Option<Point>,
-) -> (HashSet<Guard>, Vec<Guard>, bool) {
+) -> (Vec<Guard>, bool) {
     let mut guard = guard.to_owned();
     let mut states_seen: HashSet<Guard> = HashSet::new();
-    let mut path = vec![guard.to_owned()];
+    let mut path = Vec::with_capacity(100);
 
     while within_bounds(&guard.position, bounds) {
-        if states_seen.contains(&guard) {
-            return (states_seen, path, true);
-        }
-
         path.push(guard.to_owned());
-        states_seen.insert(guard.to_owned());
 
         let next = guard.move_one();
         guard = if walls.contains(&next.position) || obstruction.eq(&Some(next.position)) {
+            if states_seen.contains(&guard) {
+                return (path, true);
+            }
+
             // we would hit a wall, instead let's turn 90º clockwise
+            states_seen.insert(guard.to_owned());
             guard.turn_90cw()
         } else {
             // no wall, move!
@@ -97,7 +90,7 @@ fn move_guard(
         }
     }
 
-    (states_seen, path, false)
+    (path, false)
 }
 
 fn parse(input: &str) -> (Guard, Point, HashSet<Point>) {
