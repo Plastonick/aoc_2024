@@ -80,14 +80,12 @@ fn num_cheats(
 
     time_map
         .iter()
-        .filter(|(n, cost)| {
-            let delta = n.sub(*point).abs();
-            let within_min_distance = delta.x + delta.y <= max_distance;
-
+        .map(|(n, cost)| (n.sub(*point).abs(), cost))
+        .filter(|(delta, _)| delta.x + delta.y <= max_distance)
+        .filter(|(delta, cost)| {
             let cheat_cost = point_cost + (delta.x + delta.y) as usize;
-            let actual_saving = cheat_cost + save_minimum <= **cost;
 
-            within_min_distance && actual_saving
+            cheat_cost + save_minimum <= **cost
         })
         .count()
 }
