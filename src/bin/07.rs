@@ -19,7 +19,7 @@ fn find_test_sum(input: &str, operations: &Vec<Operation>) -> Option<usize> {
     let valid = equations
         .into_iter()
         .filter_map(|(test, numbers)| {
-            if is_valid(test, None, &numbers, operations) {
+            if is_valid(test, numbers[0], &numbers[1..], operations) {
                 Some(test)
             } else {
                 None
@@ -51,25 +51,15 @@ impl Operable for Operation {
     }
 }
 
-fn is_valid(
-    test: usize,
-    carry: Option<usize>,
-    numbers: &[usize],
-    operations: &[Operation],
-) -> bool {
+fn is_valid(test: usize, carry: usize, numbers: &[usize], operations: &[Operation]) -> bool {
     if numbers.is_empty() {
-        return carry == Some(test);
+        return carry == test;
     }
 
     for operation in operations {
-        let (arg1, arg2, skip) = match carry {
-            None => (numbers[0], numbers[1], 2),
-            Some(arg1) => (arg1, numbers[0], 1),
-        };
+        let carry = operation.operate(carry, numbers[0]);
 
-        let carry = Some(operation.operate(arg1, arg2));
-
-        if is_valid(test, carry, &numbers[skip..], operations) {
+        if is_valid(test, carry, &numbers[1..], operations) {
             return true;
         }
     }
