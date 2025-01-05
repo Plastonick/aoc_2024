@@ -1,6 +1,6 @@
 use euclid::default::{Point2D, Vector2D};
 use euclid::{point2, vec2};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 advent_of_code::solution!(14);
 
@@ -43,72 +43,68 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(safety_score)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<usize> {
     let (robots, bounds) = parse(input);
 
-    let mut min_unique = robots
-        .iter()
-        .map(|robot| robot.position)
-        .collect::<HashSet<Point2D<isize>>>()
-        .len();
-
-    let mut i = 0;
-
-    loop {
-        i += 1;
-
-        if i > 8168 {
-            break;
-        }
-
-        let new_robots: Vec<Robot> = robots
+    let x_offset = find_dim_frequency(
+        robots
             .iter()
-            .map(|robot| move_robot(robot, i, &bounds))
-            .collect();
-
-        let new_unique = new_robots
+            .map(|robot| (robot.position.x, robot.velocity.x))
+            .collect::<Vec<(isize, isize)>>(),
+        bounds.x,
+    );
+    let y_offset = find_dim_frequency(
+        robots
             .iter()
-            .map(|robot| robot.position)
-            .collect::<HashSet<Point2D<isize>>>()
-            .len();
+            .map(|robot| (robot.position.y, robot.velocity.y))
+            .collect::<Vec<(isize, isize)>>(),
+        bounds.y,
+    );
 
-        if new_unique < min_unique {
-            continue;
-        }
-
-        // manually identified...
-        min_unique = new_unique;
-
-        // println!();
-        // println!();
-        // println!();
-        // println!();
-        // println!("{i} goes");
-        // println!();
-        // println!();
-
-        // _print(&new_robots, &bounds);
-    }
-
-    None
+    frequency_alignment(bounds.x as usize, x_offset, bounds.y as usize, y_offset)
 }
 
-// fn is_symmetrical(robots: &Vec<Robot>, bounds: &Point2D<isize>) -> bool {
-//     let unique_pos_robots = robots
-//         .iter()
-//         .map(|robot| (robot.position, robot))
-//         .collect::<HashMap<Point2D<isize>, Robot>>();
-//
-//     let quadrants = get_quadrants(unique_pos_robots.values().collect(), &bounds);
-//
-//     quadrants.iter().fold(HashMap::new(), |mut acc, quadrant| {
-//         *acc.entry(&quadrant).or_insert(0) += 1;
-//
-//
-//     })
-//
-//     true
-// }
+fn frequency_alignment(
+    freq_a: usize,
+    offset_a: usize,
+    freq_b: usize,
+    offset_b: usize,
+) -> Option<usize> {
+    (0..freq_b).find_map(|bx| {
+        let alignment = offset_a + (freq_a * bx);
+
+        if (alignment - offset_a) % freq_a == 0 && (alignment - offset_b) % freq_b == 0 {
+            Some(alignment)
+        } else {
+            None
+        }
+    })
+}
+
+fn find_dim_frequency(particles: Vec<(isize, isize)>, bound: isize) -> usize {
+    let mut particles = particles;
+
+    let mut best_grouping = (0, 0);
+    for i in 0..bound {
+        let mut row_density = vec![0_u8; bound as usize];
+
+        particles
+            .iter()
+            .for_each(|particle| row_density[particle.0 as usize] += 1);
+
+        let best_position = row_density.into_iter().max().unwrap();
+        if best_position >= best_grouping.1 {
+            best_grouping = (i, best_position)
+        }
+
+        particles = particles
+            .into_iter()
+            .map(|p| ((p.0 + p.1).rem_euclid(bound), p.1))
+            .collect();
+    }
+
+    best_grouping.0 as usize
+}
 
 fn get_quadrants(robots: &Vec<Robot>, bounds: &Point2D<isize>) -> Vec<u32> {
     robots
