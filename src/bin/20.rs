@@ -1,4 +1,5 @@
 use euclid::{point2, vec2, Point2D};
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::ops::{Add, Sub};
 
@@ -8,33 +9,20 @@ type Point = Point2D<isize, isize>;
 
 pub fn part_one(input: &str) -> Option<usize> {
     let (start, end, save_minimum, racetrack) = parse(input);
+    let track_vector = generate_racetrack_list(start, &end, &racetrack);
 
-    let time_map = generate_time_map(start, &end, &racetrack);
-    let num_cheats = time_map
-        .keys()
-        .map(|point| num_cheats(point, &time_map, save_minimum, 2))
-        .sum::<usize>();
-
-    Some(num_cheats)
+    Some(num_cheats(&track_vector, save_minimum, 2))
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
     let (start, end, save_minimum, racetrack) = parse(input);
+    let track_vector = generate_racetrack_list(start, &end, &racetrack);
 
-    let time_map = generate_time_map(start, &end, &racetrack);
-    let num_cheats = time_map
-        .keys()
-        .map(|point| num_cheats(point, &time_map, save_minimum, 20))
-        .sum::<usize>();
-
-    Some(num_cheats)
+    Some(num_cheats(&track_vector, save_minimum, 20))
 }
 
-fn generate_time_map(
-    start: Point,
-    end: &Point,
-    racetrack: &HashSet<Point>,
-) -> HashMap<Point, usize> {
+fn generate_racetrack_list(start: Point, end: &Point, racetrack: &HashSet<Point>) -> Vec<Point> {
+    // TODO this is a hacky performance fix built on top of the old HashMap based solution
     let mut queue = vec![(start, 0)];
     let mut time_map = HashMap::new();
 
@@ -56,6 +44,10 @@ fn generate_time_map(
     }
 
     time_map
+        .iter()
+        .sorted_by(|a, b| a.1.cmp(b.1))
+        .map(|x| *x.0)
+        .collect::<Vec<Point>>()
 }
 
 fn neighbours(point: &Point, racetrack: &HashSet<Point>) -> Vec<Point> {
@@ -70,24 +62,28 @@ fn neighbours(point: &Point, racetrack: &HashSet<Point>) -> Vec<Point> {
     .collect()
 }
 
-fn num_cheats(
-    point: &Point,
-    time_map: &HashMap<Point, usize>,
-    save_minimum: usize,
-    max_distance: isize,
-) -> usize {
-    let point_cost = time_map[point];
-
-    time_map
+fn num_cheats(racetrack: &[Point], save_minimum: usize, max_distance: isize) -> usize {
+    racetrack
         .iter()
-        .map(|(n, cost)| (n.sub(*point).abs(), cost))
-        .filter(|(delta, _)| delta.x + delta.y <= max_distance)
-        .filter(|(delta, cost)| {
-            let cheat_cost = point_cost + (delta.x + delta.y) as usize;
+        .enumerate()
+        .map(|(point_cost, point)| {
+            racetrack
+                .iter()
+                .enumerate()
+                .skip(point_cost + save_minimum)
+                // map to manhattan distance between points, and cost of target point
+                .map(|(cost, n)| (n.sub(*point).abs(), cost))
+                // only target points within max distance from the source point
+                .filter(|(delta, _)| delta.x + delta.y <= max_distance)
+                // only points that would save enough to make the cheat worth it
+                .filter(|(delta, cost)| {
+                    let cheat_cost = point_cost + (delta.x + delta.y) as usize;
 
-            cheat_cost + save_minimum <= **cost
+                    cheat_cost + save_minimum <= *cost
+                })
+                .count()
         })
-        .count()
+        .sum::<usize>()
 }
 
 fn parse(input: &str) -> (Point, Point, usize, HashSet<Point>) {
