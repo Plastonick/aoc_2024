@@ -1,21 +1,18 @@
 /// Encapsulates code that interacts with solution functions.
 use std::fmt::Display;
-use std::hint::black_box;
-use std::io::{stdout, Write};
 use std::process::Output;
 use std::time::{Duration, Instant};
-use std::{cmp, env, process};
+use std::{env, process};
 
 use crate::template::ANSI_BOLD;
-use crate::template::{aoc_cli, Day, ANSI_ITALIC, ANSI_RESET};
+use crate::template::{aoc_cli, Day, ANSI_RESET};
 
 pub fn run_part<I: Clone, T: Display>(func: impl Fn(I) -> Option<T>, input: I, day: Day, part: u8) {
     let part_str = format!("Part {part}");
 
-    let (result, duration, samples) =
-        run_timed(func, input, |result| print_result(result, &part_str, ""));
+    let (result, duration) = run_timed(func, input, |result| print_result(result, &part_str, ""));
 
-    print_result(&result, &part_str, &format_duration(&duration, samples));
+    print_result(&result, &part_str, &format!(" ({duration:.1?})"));
 
     if let Some(result) = result {
         submit_result(result, day, part);
@@ -25,11 +22,7 @@ pub fn run_part<I: Clone, T: Display>(func: impl Fn(I) -> Option<T>, input: I, d
 /// Run a solution part. The behavior differs depending on whether we are running a release or debug build:
 ///  1. in debug, the function is executed once.
 ///  2. in release, the function is benched (approx. 1 second of execution time or 10 samples, whatever take longer.)
-fn run_timed<I: Clone, T>(
-    func: impl Fn(I) -> T,
-    input: I,
-    hook: impl Fn(&T),
-) -> (T, Duration, u128) {
+fn run_timed<I: Clone, T>(func: impl Fn(I) -> T, input: I, hook: impl Fn(&T)) -> (T, Duration) {
     let timer = Instant::now();
     let result = {
         let input = input.clone();
@@ -43,55 +36,7 @@ fn run_timed<I: Clone, T>(
 
     hook(&result);
 
-    let run = if std::env::args().any(|x| x == "--time") {
-        bench(func, input, &base_time)
-    } else {
-        (base_time, 1)
-    };
-
-    (result, run.0, run.1)
-}
-
-fn bench<I: Clone, T>(func: impl Fn(I) -> T, input: I, base_time: &Duration) -> (Duration, u128) {
-    let mut stdout = stdout();
-
-    print!(" > {ANSI_ITALIC}benching{ANSI_RESET}");
-    let _ = stdout.flush();
-
-    let bench_iterations =
-        (Duration::from_secs(1).as_nanos() / cmp::max(base_time.as_nanos(), 10)).clamp(10, 10000);
-
-    let mut timers: Vec<Duration> = vec![];
-
-    for _ in 0..bench_iterations {
-        // need a clone here to make the borrow checker happy.
-        let cloned = input.clone();
-        let timer = Instant::now();
-        black_box(func(black_box(cloned)));
-        timers.push(timer.elapsed());
-    }
-
-    (
-        #[allow(clippy::cast_possible_truncation)]
-        Duration::from_nanos(average_duration(&timers) as u64),
-        bench_iterations,
-    )
-}
-
-fn average_duration(numbers: &[Duration]) -> u128 {
-    numbers
-        .iter()
-        .map(std::time::Duration::as_nanos)
-        .sum::<u128>()
-        / numbers.len() as u128
-}
-
-fn format_duration(duration: &Duration, samples: u128) -> String {
-    if samples == 1 {
-        format!(" ({duration:.1?})")
-    } else {
-        format!(" ({duration:.1?} @ {samples} samples)")
-    }
+    (result, base_time)
 }
 
 fn print_result<T: Display>(result: &Option<T>, part: &str, duration_str: &str) {

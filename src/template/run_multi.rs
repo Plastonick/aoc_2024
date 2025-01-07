@@ -32,7 +32,7 @@ pub fn run_multi(days_to_run: &HashSet<Day>, is_release: bool, is_timed: bool) -
             }
         });
 
-    if is_timed {
+    if true {
         let timings = Timings { data: timings };
         let total_millis = timings.total_millis();
         println!(
@@ -67,6 +67,7 @@ pub fn get_path_for_bin(day: Day) -> String {
 pub mod child_commands {
     use super::{get_path_for_bin, Error};
     use crate::template::{Day, ANSI_BOLD, ANSI_RESET};
+    use regex::Regex;
     use std::{
         io::{BufRead, BufReader},
         path::Path,
@@ -140,12 +141,7 @@ pub mod child_commands {
         output
             .iter()
             .filter_map(|l| {
-                if !l.contains(" samples)") {
-                    return None;
-                }
-
                 let Some((timing_str, nanos)) = parse_time(l) else {
-                    eprintln!("Could not parse timings from line: {l}");
                     return None;
                 };
 
@@ -170,15 +166,9 @@ pub mod child_commands {
     }
 
     fn parse_time(line: &str) -> Option<(&str, f64)> {
-        // for possible time formats, see: https://github.com/rust-lang/rust/blob/1.64.0/library/core/src/time.rs#L1176-L1200
-        let str_timing = line
-            .split(" samples)")
-            .next()?
-            .split('(')
-            .last()?
-            .split('@')
-            .next()?
-            .trim();
+        let re = Regex::new(r#"Part \d: .* \((\d+?(?:\.\d+)..?)"#).unwrap();
+        let caps = re.captures(line)?;
+        let str_timing = caps.get(1).unwrap().as_str();
 
         let parsed_timing = match str_timing {
             s if s.contains("ns") => s.split("ns").next()?.parse::<f64>().ok(),
