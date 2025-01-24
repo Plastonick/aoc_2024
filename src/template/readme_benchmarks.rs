@@ -2,7 +2,7 @@
 /// The approach taken is similar to how `aoc-readme-stars` handles this.
 use std::{fs, io};
 
-use crate::template::timings::Timings;
+use crate::template::timings::State;
 use crate::template::Day;
 
 static MARKER: &str = "<!--- benchmarking table --->";
@@ -52,7 +52,7 @@ fn locate_table(readme: &str) -> Result<TablePosition, Error> {
     Ok(TablePosition { pos_start, pos_end })
 }
 
-fn construct_table(prefix: &str, timings: Timings, total_millis: f64) -> String {
+fn construct_table(prefix: &str, timings: State, total_millis: f64) -> String {
     let header = format!("{prefix} Benchmarks");
 
     let mut lines: Vec<String> = vec![
@@ -63,7 +63,7 @@ fn construct_table(prefix: &str, timings: Timings, total_millis: f64) -> String 
         "| :---: | :---: | :---:  |".into(),
     ];
 
-    for timing in timings.data {
+    for timing in timings.timings {
         let path = get_path_for_bin(timing.day);
         lines.push(format!(
             "| [Day {}]({}) | `{}` | `{}` |",
@@ -81,14 +81,14 @@ fn construct_table(prefix: &str, timings: Timings, total_millis: f64) -> String 
     lines.join("\n")
 }
 
-fn update_content(s: &mut String, timings: Timings, total_millis: f64) -> Result<(), Error> {
+fn update_content(s: &mut String, timings: State, total_millis: f64) -> Result<(), Error> {
     let positions = locate_table(s)?;
     let table = construct_table("##", timings, total_millis);
     s.replace_range(positions.pos_start..positions.pos_end, &table);
     Ok(())
 }
 
-pub fn update(timings: Timings) -> Result<(), Error> {
+pub fn update(timings: State) -> Result<(), Error> {
     let path = "README.md";
     let mut readme = String::from_utf8_lossy(&fs::read(path)?).to_string();
     let total_millis = timings.total_millis();
@@ -100,11 +100,11 @@ pub fn update(timings: Timings) -> Result<(), Error> {
 #[cfg(feature = "test_lib")]
 mod tests {
     use super::{update_content, MARKER};
-    use crate::{day, template::timings::Timing, template::timings::Timings};
+    use crate::{day, template::timings::State, template::timings::Timing};
 
-    fn get_mock_timings() -> Timings {
-        Timings {
-            data: vec![
+    fn get_mock_timings() -> State {
+        State {
+            timings: vec![
                 Timing {
                     day: day!(1),
                     part_1: Some("10ms".into()),

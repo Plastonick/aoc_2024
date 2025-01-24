@@ -4,10 +4,10 @@ use crate::template::{Day, ANSI_BOLD, ANSI_ITALIC, ANSI_RESET};
 
 use super::{
     all_days,
-    timings::{Timing, Timings},
+    timings::{State, Timing},
 };
 
-pub fn run_multi(days_to_run: &HashSet<Day>, is_release: bool, is_timed: bool) -> Option<Timings> {
+pub fn run_multi(days_to_run: &HashSet<Day>, is_release: bool, is_timed: bool) -> Option<State> {
     let mut timings: Vec<Timing> = Vec::with_capacity(days_to_run.len());
 
     let mut need_space = false;
@@ -32,16 +32,13 @@ pub fn run_multi(days_to_run: &HashSet<Day>, is_release: bool, is_timed: bool) -
             }
         });
 
-    if true {
-        let timings = Timings { data: timings };
-        let total_millis = timings.total_millis();
-        println!(
-            "\n{ANSI_BOLD}Total (Run):{ANSI_RESET} {ANSI_ITALIC}{total_millis:.2}ms{ANSI_RESET}"
-        );
-        Some(timings)
-    } else {
-        None
-    }
+    let timings = State {
+        year: 2024,
+        timings: timings,
+    };
+    let total_millis = timings.total_millis();
+    println!("\n{ANSI_BOLD}Total (Run):{ANSI_RESET} {ANSI_ITALIC}{total_millis:.2}ms{ANSI_RESET}");
+    Some(timings)
 }
 
 #[allow(dead_code)]

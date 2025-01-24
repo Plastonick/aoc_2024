@@ -1,9 +1,7 @@
 use advent_of_code::template::commands::{all, download, read, scaffold, solve, time};
 use args::{parse, AppArguments};
 
-#[cfg(feature = "today")]
 use advent_of_code::template::Day;
-#[cfg(feature = "today")]
 use std::process;
 
 mod args {
@@ -36,7 +34,6 @@ mod args {
             day: Option<Day>,
             store: bool,
         },
-        #[cfg(feature = "today")]
         Today,
     }
 
@@ -74,7 +71,6 @@ mod args {
                 submit: args.opt_value_from_str("--submit")?,
                 dhat: args.contains("--dhat"),
             },
-            #[cfg(feature = "today")]
             Some("today") => AppArguments::Today,
             Some(x) => {
                 eprintln!("Unknown command: {x}");
@@ -122,7 +118,6 @@ fn main() {
                 dhat,
                 submit,
             } => solve::handle(day, release, dhat, submit),
-            #[cfg(feature = "today")]
             AppArguments::Today => {
                 match Day::today() {
                     Some(day) => {

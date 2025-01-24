@@ -2,10 +2,7 @@ use std::error::Error;
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[cfg(feature = "today")]
 use chrono::{Datelike, FixedOffset, Utc};
-
-#[cfg(feature = "today")]
 const SERVER_UTC_OFFSET: i32 = -5;
 
 /// A valid day number of advent (i.e. an integer in range 1 to 25).
@@ -43,7 +40,6 @@ impl Day {
     }
 }
 
-#[cfg(feature = "today")]
 impl Day {
     /// Returns the current day if it's between the 1st and the 25th of december, `None` otherwise.
     pub fn today() -> Option<Self> {

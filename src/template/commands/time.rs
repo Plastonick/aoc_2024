@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
 use crate::template::run_multi::run_multi;
-use crate::template::timings::Timings;
+use crate::template::timings::State;
 use crate::template::{all_days, readme_benchmarks, Day};
 
 pub fn handle(day: Option<Day>, run_all: bool, store: bool) {
-    let stored_timings = Timings::read_from_file();
+    let stored_timings = State::read_from_file();
 
     let days_to_run = day.map_or_else(
         || {
